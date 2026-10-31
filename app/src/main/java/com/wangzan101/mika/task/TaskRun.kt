@@ -480,6 +480,19 @@ class TaskRun(
                 val learnedNotes = legacyNames().let { legacy -> memoryRuntime.appKnowledge().notes().mapValues { it.value.copy(text = legacy.rewrite(it.value.text)) } }
                 KnowledgeStore(KnowledgeStore.loadBundled(), userNotes, learnedNotes) to GuideCatalog.loadBundled()
             }
+            val appAccess = (service.application as MikaApp).appAccess
+            suspend fun previewAllowed(): Boolean {
+                val screen = phone?.screen ?: return false
+                return try {
+                    com.wangzan101.mika.core.uistate.AppAccessScreenPort(
+                        inner = screen, appAccess = appAccess,
+                        packages = screen::accessPackages,
+                        protectedUi = { appAccess.sensitiveUi }, ownPackage = service.packageName,
+                    ).checkAppAccess()
+                    true
+                } catch (e: CancellationException) { throw e }
+                catch (_: com.wangzan101.mika.core.access.AppAccessDenied) { false }
+            }
             val metrics = mainScreenMetrics()
             // 在 App 里操作的节奏(设置 › 干活时);评测、真机验收按钩子覆盖
             val pace = env.evalHooks.operatingPace ?: FeatureFlags.get(service).operatingPace()
@@ -526,7 +539,8 @@ class TaskRun(
                         create()
                     }.also { d ->
                         _displayId.value = d.displayId
-                        side.launch { d.frames.collect { if (dispatcher?.surface != WEB) _frames.value = it } }
+                        side.launch { d.frames.collect { if (dispatcher?.surface != WEB) _frames.value = if (previewAllowed()) it else null } }
+                        side.launch { appAccess.state.collect { if (dispatcher?.surface != WEB && !previewAllowed()) _frames.value = null } }
                     }
                 }
                 val audio = recovery.audioMute(shell, key).also { mute = it }
@@ -546,6 +560,7 @@ class TaskRun(
                     // 启动前就静上,开头几秒也没声;启动被拒就还原
                     beforeOpen = muter::beforeOpen,
                     notOpened = muter::notOpened,
+                    appAccess = appAccess,
                 )
                 val side0 = PhoneSide(shell, a11y, screen, agentDisplay, muter)
                 phone = side0
@@ -560,6 +575,11 @@ class TaskRun(
                         withContext(Dispatchers.IO) { runCatching { AppCopyReader.read(s, launchableApps(service.packageManager, service.packageName)) }.getOrNull() }
                     }.orEmpty()
                 }) { connectPhone() }
+            val accessedPhone = com.wangzan101.mika.core.uistate.AppAccessScreenPort(
+                phoneScreen, appAccess,
+                packages = { phone?.screen?.accessPackages().orEmpty() },
+                protectedUi = { appAccess.sensitiveUi }, ownPackage = service.packageName,
+            )
             afterTask = phoneScreen.afterTask
             // 挪回虚拟屏后等窗口出现,Agent 接下来读屏才读得到
             suspend fun moveTask(taskId: Int, to: Int): Boolean {
@@ -663,7 +683,7 @@ class TaskRun(
             val runApproval = approvalControl.start(remote = provenance.origin == RunOrigin.Mcp).also { approval = it }
             val childRunner = if (provenance.origin == RunOrigin.Ui && web != null) ChildAgentRunner(
                 create = { childSpec ->
-                    val childTools = toolDispatcher(phoneScreen, model.capabilities.vision,
+                    val childTools = toolDispatcher(accessedPhone, model.capabilities.vision,
                         web = web, webPacing = { PagePacing.human() }, webPlacePace = { PlacePace.of(catalog.sitePace(it)) },
                         webIdleScroll = { IdleScroll(Random.Default) },
                         appPacing = { pace.appPacing() }, appPace = { PlacePace.of(catalog.appPace(it)) }, appIdleScroll = { IdleScroll(Random.Default) },
@@ -678,7 +698,7 @@ class TaskRun(
                 store = (service.application as MikaApp).childRuns,
                 ownerAlive = { job?.isActive == true },
             ).also { children = it } else null
-            val tools = toolDispatcher(phoneScreen, model.capabilities.vision, catalog, recordFrames = true, vision = vision?.let { VisionService(it, BitmapImageOps) },
+            val tools = toolDispatcher(accessedPhone, model.capabilities.vision, catalog, recordFrames = true, vision = vision?.let { VisionService(it, BitmapImageOps) },
                 stableRefs = speed.inlineScreen, inlineScreen = speed.inlineScreen,
                 adaptiveVision = speed.adaptiveVision,
                 deepLinks = speed.deepLinks, memory = memory, profile = if (memory != null) memoryRuntime.profile() else null,

@@ -19,6 +19,7 @@ import com.wangzan101.mika.core.action.FollowUp
 import com.wangzan101.mika.core.action.Origin
 import com.wangzan101.mika.core.action.Presented
 import com.wangzan101.mika.core.action.Refusals
+import com.wangzan101.mika.core.access.AppAccessDenied
 import com.wangzan101.mika.core.model.Author
 import com.wangzan101.mika.core.gate.ConfirmationGate
 import com.wangzan101.mika.core.knowledge.ChannelAdvisor
@@ -645,6 +646,11 @@ class AgentLoop(
                     guards.stop?.let {
                         recordReply(Redactor.args(tools.verb(first.name), first.argsJson, secretField = true))
                         return StopRules.guard(it)
+                    }
+                    // 应用权限拒绝已经由执行入口作为工具结果交给模型:不结束任务,让模型换路线或向用户说明
+                    if (AppAccessDenied.isAppAccessCode(action.code)) {
+                        track.after(tools.verb(first.name), ok = false, guard = false, changed = null, recovery = false, app = null)
+                        continue
                     }
                     // 模型单步只会被守卫叫停、被确认关卡拦下或因作用在 Mika 自己身上不做;别的拒绝说明执行入口和这里对不上
                     check(action.hit != null || action.code == Refusals.OWN_APP) { "unexpected refusal ${action.code} for ${first.name}" }
