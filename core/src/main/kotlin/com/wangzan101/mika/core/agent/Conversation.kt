@@ -46,15 +46,16 @@ object Conversation {
         t.outcome.trim().takeIf { t.status == "cancelled" && it.isNotEmpty() && it != CANCELLED_OUTCOME }
 
     /** 把之前的轮次做成一条用户角色的参考消息,最近的在最后;太长就丢掉较早的轮次。没有轮次返回 null。 */
-    fun context(turns: List<Turn>, maxTurns: Int = 5, maxChars: Int = 4000): Message? {
+    fun context(turns: List<Turn>, maxTurns: Int = 5, maxTokens: Int = 2_500): Message? {
         var recent = turns.takeLast(maxTurns.coerceAtLeast(0))
         if (recent.isEmpty()) return null
+        val header = "$HEADER\n"
         fun render(ts: List<Turn>, clip: Int) = ts.mapIndexed { i, t -> line(i + 1, t, clip) }.joinToString("\n")
-        while (recent.size > 1 && HEADER.length + 1 + render(recent, Int.MAX_VALUE).length > maxChars) recent = recent.drop(1)
+        while (recent.size > 1 && TokenEstimate.of(header + render(recent, Int.MAX_VALUE)) > maxTokens) recent = recent.drop(1)
         var body = render(recent, Int.MAX_VALUE)
-        if (HEADER.length + 1 + body.length > maxChars) {
-            // 只剩一轮还超长:各字段截断
-            body = render(recent, ((maxChars - HEADER.length) / 3).coerceAtLeast(20))
+        if (TokenEstimate.of(header + body) > maxTokens) {
+            // 只剩一轮还超长:整段按 token 截断
+            body = TokenEstimate.clip(body, (maxTokens - TokenEstimate.of(header)).coerceAtLeast(20), "…")
         }
         return Message(Role.User, listOf(Part.Text("$HEADER\n$body")), Author.Mika)
     }

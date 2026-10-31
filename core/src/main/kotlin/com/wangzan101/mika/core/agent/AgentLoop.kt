@@ -470,7 +470,7 @@ class AgentLoop(
                 }
             }
             val text = reply.parts.filterIsInstance<Part.Text>().joinToString("") { it.text }.trim()
-            history += Message(Role.Assistant, reply.parts, Author.Mika).also { caller.noteReply(it, used) }
+            history += Message(Role.Assistant, reply.parts, Author.Mika).also { caller.noteReply(it, used, reply.usage) }
             val calls = reply.parts.filterIsInstance<Part.ToolCall>()
             note = text.ifEmpty { calls.firstOrNull()?.name ?: note }
             val tool = calls.firstOrNull()?.name
