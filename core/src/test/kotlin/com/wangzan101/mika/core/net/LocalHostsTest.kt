@@ -1,4 +1,4 @@
-package com.wangzan101.mika.settings
+package com.wangzan101.mika.core.net
 
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue

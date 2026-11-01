@@ -18,6 +18,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import com.wangzan101.mika.core.net.NetProxy
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
@@ -154,11 +155,10 @@ class UpdateChecker(
     }
 
     companion object {
-        /** 有的网络连 GitHub 时快时慢:超时放短,失败就换备用来源。 */
-        fun defaultClient(): OkHttpClient = OkHttpClient.Builder()
+        /** 有的网络连 GitHub 时快时慢:超时放短,失败就换备用来源。走设置 › 网络代理。 */
+        fun defaultClient(): OkHttpClient = NetProxy.shared.client(OkHttpClient.Builder()
             .connectTimeout(5, TimeUnit.SECONDS)
             .readTimeout(8, TimeUnit.SECONDS)
-            .callTimeout(10, TimeUnit.SECONDS)
-            .build()
+            .callTimeout(10, TimeUnit.SECONDS))
     }
 }

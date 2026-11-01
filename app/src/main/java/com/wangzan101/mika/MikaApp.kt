@@ -297,6 +297,11 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
         AppLanguage.applyDefaultLocale(this)
         UiText.source = ResourceTexts { AppLanguage.resources(this) }
         registerActivityLifecycleCallbacks(foreground)
+        // 设置 › 网络代理:Mika 自己的连接从第一个请求起就按它走;SOCKS 代理的账号密码经全进程的认证器给
+        com.wangzan101.mika.settings.NetProxyStore.get(this)
+        com.wangzan101.mika.core.net.NetProxy.shared.installSocksAuth()
+        // 内置浏览器:设了代理才给 WebView 设上(读设置要解密,放到后台;没设代理不为此加载 WebView)
+        scope.launch(Dispatchers.IO) { runCatching { com.wangzan101.mika.cap.web.WebProxy.apply(this@MikaApp) } }
         capsule.start()
         // 内置助手的真实现,并开始看着助手(Mika 进程起来后,还活着的助手会自己交接 Binder)
         phone.shellManager.start()

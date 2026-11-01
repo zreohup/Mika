@@ -57,6 +57,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import com.wangzan101.mika.core.net.NetProxy
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.Base64
@@ -611,7 +612,7 @@ class ProviderStore(
         } catch (e: ModelError.SignInExpired) {
             return ModelListResult.Failed(ListFailure.Auth)
         } catch (e: ModelError) {
-            return ModelListResult.Failed(if (e is ModelError.Network) ListFailure.Network else ListFailure.Server)
+            return ModelListResult.Failed(if (e is ModelError.Network || e is ModelError.Proxy) ListFailure.of(e) else ListFailure.Server)
         }
         val base = provider(p.id)?.baseUrl ?: p.baseUrl
         return listModels(p.kind, base, token, p.sessionHeader)
@@ -1076,16 +1077,20 @@ class ProviderStore(
         private const val USE_MAIN = "main"
         private const val USE_NONE = "none"
 
-        private val http by lazy { OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS).build() }
+        // 连服务商的客户端都经 NetProxy 建:走设置 › 网络代理,本机、局域网地址(本地模型)直连
+        private val http by lazy { NetProxy.shared.client(OkHttpClient.Builder().readTimeout(120, TimeUnit.SECONDS)) }
 
         /** 和对话模型共用的连接池;同一服务商的其他请求(如语音转写)也用它。 */
         val modelHttp: OkHttpClient get() = http
 
-        private val catalog by lazy { ModelCatalog(OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build()) }
+        /** 列模型、账号登录换令牌用的:读超时短一些,同样走网络代理。 */
+        private val shortHttp by lazy { NetProxy.shared.client(OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS)) }
 
-        private val defaultChatGptAuth by lazy { ChatGptAuth(OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build()) }
-        private val defaultOpenRouterAuth by lazy { OpenRouterAuth(OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build()) }
-        private val defaultXaiAuth by lazy { XaiAuth(OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build()) }
+        private val catalog by lazy { ModelCatalog(shortHttp) }
+
+        private val defaultChatGptAuth by lazy { ChatGptAuth(shortHttp) }
+        private val defaultOpenRouterAuth by lazy { OpenRouterAuth(shortHttp) }
+        private val defaultXaiAuth by lazy { XaiAuth(shortHttp) }
 
         /** ChatGPT 服务商的名字(品牌名,不随界面语言变)。 */
         const val CHATGPT_NAME = "ChatGPT"
