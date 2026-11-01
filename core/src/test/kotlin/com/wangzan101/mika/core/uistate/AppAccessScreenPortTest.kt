@@ -105,6 +105,7 @@ class AppAccessScreenPortTest {
         denied("app_blocked") { screen.openApp("bank") }
         denied("app_blocked") { screen.openAppCopy("bank", 10) }
         denied("app_blocked") { screen.shareText("bank", "text") }
+        denied("app_blocked") { screen.awaitAppFree("bank", null, 1_000) }
     }
 
     // ---------- 每个端口成员都过这道边界 ----------
@@ -148,6 +149,7 @@ class AppAccessScreenPortTest {
                 Double::class.javaPrimitiveType -> 0.0
                 Boolean::class.javaPrimitiveType -> false
                 String::class.java -> ""
+                Int::class.javaObjectType -> null
                 List::class.java -> emptyList<Any>()
                 SystemAction::class.java -> SystemAction.ShowAlarms
                 Continuation::class.java -> Continuation<Any?>(EmptyCoroutineContext) {}

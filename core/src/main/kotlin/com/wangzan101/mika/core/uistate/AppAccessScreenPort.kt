@@ -145,6 +145,12 @@ class AppAccessScreenPort(
         return inner.openLink(action, uri, packageName)
     }
 
+    /** 只等占用登记、不读屏;目标照打开时一样先看,受限的 App 不必等,当场拒。 */
+    override suspend fun awaitAppFree(packageName: String, userId: Int?, timeoutMs: Long): AppWait {
+        target(packageName)
+        return inner.awaitAppFree(packageName, userId, timeoutMs)
+    }
+
     /** 接手的 App 由端口按名单挑(由谁接只有端口知道);做完后的前台由执行入口照常核对。 */
     override suspend fun systemAction(action: SystemAction) = inner.systemAction(action)
 
