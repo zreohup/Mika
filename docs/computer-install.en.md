@@ -88,6 +88,7 @@ mika --url http://PHONE:8765 --token-file /path/to/private-token-file doctor --j
 | `incompatible_api` | The APK on the phone is too old to include task API v1; update it. |
 | `stale_connection` | The phone has rebooted; run `connect` again. |
 | `device_selection` | More than one phone is online; find the serial with `mika devices` and add `--device SERIAL`. |
+| `connection_info` | Mika's connection information could not be read (the phone is locked, Mika hasn't been opened yet, and so on): unlock the phone, open Mika once, then run `connect` again. |
 | `adb` / `adb_unavailable` | Make sure adb is on PATH and the phone shows as `device` in `adb devices`, open Mika once on the phone, then run `connect` again. |
 | The agent does not see the Skill | Check for an extra nested folder and that `scripts/` was copied too, then start a new session. |
 

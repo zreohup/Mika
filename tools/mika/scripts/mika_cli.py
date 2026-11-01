@@ -11,6 +11,7 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -145,6 +146,10 @@ def device_state_error(state):
 
 
 class Adb:
+    # adb executables whose server this process has already started; one start per process is enough.
+    _started = set()
+    _start_lock = threading.Lock()
+
     def __init__(self, executable="adb", device=None):
         self.executable, self.device = executable, device
 
@@ -162,7 +167,15 @@ class Adb:
         return result.stdout.strip()
 
     def start_server(self):
-        # Output is discarded so a daemon started here never holds the pipes of a later captured call.
+        # Once per process and executable. Output is discarded so a daemon started here never holds the pipes
+        # of a later captured call.
+        with Adb._start_lock:
+            if self.executable in Adb._started:
+                return
+            self._start_server()
+            Adb._started.add(self.executable)
+
+    def _start_server(self):
         try:
             result = subprocess.run([self.executable, "start-server"], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                                     stderr=subprocess.DEVNULL, timeout=60)

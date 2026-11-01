@@ -191,7 +191,7 @@ class DeskTest(unittest.TestCase):
                 self.assertEqual("device_pinned", caught.exception.code)
                 self.assertEqual("phone-b", args.device)
 
-    def test_adb_server_starts_once_and_a_lone_unready_phone_reports_its_state(self):
+    def test_a_lone_unready_phone_reports_its_state(self):
         with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
             import mika_desk
         args = Namespace(url=None, device=None, adb="adb")
@@ -207,7 +207,7 @@ class DeskTest(unittest.TestCase):
             finally:
                 server.shutdown()
                 worker.join(timeout=2)
-        self.assertEqual(1, start.call_count)
+        start.assert_called()
         for code, body in results:
             self.assertEqual(502, code)
             self.assertEqual("device_offline", body["error"]["code"])

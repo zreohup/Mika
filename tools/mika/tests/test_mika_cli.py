@@ -446,6 +446,16 @@ else:
                 module.Adb("adb").start_server()
             self.assertEqual("adb_unavailable", caught.exception.code)
 
+    def test_adb_server_starts_once_per_process(self):
+        module = load_cli()
+        done = subprocess.CompletedProcess(["adb", "start-server"], 0)
+        with patch.object(module.subprocess, "run", return_value=done) as run:
+            module.Adb("adb").start_server()
+            module.Adb("adb", "phone-a").start_server()
+            self.assertEqual(1, run.call_count)
+            module.Adb("/other/adb").start_server()
+            self.assertEqual(2, run.call_count)
+
     def test_skill_copy_runs_without_original_repository(self):
         copied = self.directory / "installed-skill"
         shutil.copytree(SKILL, copied, ignore=shutil.ignore_patterns("__pycache__", "*.egg-info", "build"))

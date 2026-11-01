@@ -12,13 +12,13 @@ Mika runs its own agent on Android. Give it the user's complete goal, target and
 Do these in order, without asking the user unless a step says so.
 
 1. Pick the command. If `mika --version` works, use `mika`. Otherwise use the bundled script (skill-dir = the folder containing this SKILL.md; Python 3.10+): POSIX `python3 <skill-dir>/scripts/mika_cli.py`, Windows `py -3 <skill-dir>\scripts\mika_cli.py`. Below, `mika` means whichever you chose.
-2. `mika devices --json` lists ADB phones.
-3. With exactly one online device, run `mika connect --device SERIAL --json`. This enables computer access through Mika's official bootstrap script.
+2. Use the connection method the user picked on the phone. You cannot see the phone: if the user has not said which one, ask once.
+3. USB/ADB: `mika devices --json` lists ADB phones; run `mika connect --device SERIAL --json` for the chosen one. This enables computer access through Mika's official bootstrap script. With several phones online, ask the user which one, then keep that device for the whole task.
 4. `mika doctor --device SERIAL --json` checks connection and phone state. Only then submit tasks.
 
-Decision rule:
-- Default to USB/ADB. Do not ask which mode to use when exactly one ADB device is online. With several devices, ask the user which one, then keep that device for the whole task.
-- Use `--url http://PHONE:8765 --token-file /path/to/token-file` instead of `--device` only when the user gave both a URL and a token-file path. Never print, read aloud or put token contents in a command, goal or reply.
+Wi-Fi/private VPN: use `--url http://PHONE:8765 --token-file /path/to/token-file` (both from the user) instead of `--device`. Never print, read aloud or put token contents in a command, goal or reply.
+
+Notes:
 - ADB mode needs Android platform-tools; the APK must include task API v1 (an older MCP-only APK is insufficient). Humans can run `mika ui` for a local task desk; agents should use the commands below.
 
 ## Common failures
@@ -28,7 +28,8 @@ Decision rule:
 | Device shows `unauthorized` | Ask the user to accept the USB debugging prompt on the phone, then rerun `devices`. |
 | `adb_unavailable` | Install Android platform-tools or pass `--adb PATH`. |
 | `device_selection`, `device_offline` | Run `devices`, choose `--device SERIAL`; replug or reconnect if offline. |
-| `stale_connection`, `connection_info`, `credentials` | Phone rebooted or token changed: rerun `connect`. |
+| `stale_connection`, `credentials` | Phone rebooted or token changed: rerun `connect`. |
+| `connection_info` | Mika's connection information could not be read or is invalid: ask the user to unlock the phone and open Mika once, then rerun `connect`. |
 | `incompatible_api` | Update the Mika APK on the phone. |
 | `adb` / `connection` errors, phone locked | Ask the user to unlock the phone and open Mika, then rerun `connect`. |
 

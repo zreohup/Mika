@@ -88,6 +88,7 @@ mika --url http://PHONE:8765 --token-file /path/to/private-token-file doctor --j
 | `incompatible_api` | 手机上的 APK 太旧，不带任务 API v1，更新 APK。 |
 | `stale_connection` | 手机重启过，重新运行 `connect`。 |
 | `device_selection` | 不止一台手机在线，用 `mika devices` 查到序列号后加 `--device SERIAL`。 |
+| `connection_info` | 读不到 Mika 的连接信息（手机锁着、还没打开过 Mika 等）：解锁手机、打开一次 Mika 后再运行 `connect`。 |
 | `adb` / `adb_unavailable` | 确认 adb 在 PATH 里、手机在 `adb devices` 里显示为 `device`，在手机上打开一次 Mika 后再运行 `connect`。 |
 | Agent 看不到 Skill | 检查是否多嵌套了一层文件夹、`scripts/` 是否一起复制，然后重开会话。 |
 

@@ -51,17 +51,14 @@ class Desk(ThreadingHTTPServer):
         if not args.url and not args.device:
             args.device = os.environ.get("ANDROID_SERIAL")
         self.lock = threading.Lock()
-        self.adb_started = False
         self.key = secrets.token_urlsafe(32)
         self.host = f"127.0.0.1:{self.server_port}"
         self.origin = "http://" + self.host
 
     def list_devices(self):
-        # Caller holds the lock. The ADB server is started once, before the first listing.
+        # Caller holds the lock. Adb starts the server at most once per process.
         adb = Adb(self.args.adb)
-        if not self.adb_started:
-            adb.start_server()
-            self.adb_started = True
+        adb.start_server()
         return adb.devices()
 
     def pin_target(self, choice):
