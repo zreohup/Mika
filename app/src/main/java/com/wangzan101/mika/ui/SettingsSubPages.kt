@@ -329,10 +329,10 @@ fun WebSitesScreen(state: WebSitesState, onBack: () -> Unit) {
 
 // ---------- 高级 ----------
 
-/** 设置 › 文件与计算环境:允许脚本联网、重置运行环境。 */
+/** 设置 › 文件与计算环境:允许脚本联网、网络代理、已用空间(按对话清理工作区)、重置运行环境。 */
 @Composable
-fun SandboxScreen(onBack: () -> Unit, onOpenStorage: () -> Unit = {}) {
-    PageScaffold(stringResource(R.string.settings_sandbox), onBack) { AdvancedSettings(onOpenStorage) }
+fun SandboxScreen(onBack: () -> Unit) {
+    PageScaffold(stringResource(R.string.settings_sandbox), onBack) { AdvancedSettings() }
 }
 
 /** 设置 › 记住的操作路线:[count] 条,可以全部清除(先确认);[count] 为空表示还没读出来。 */
