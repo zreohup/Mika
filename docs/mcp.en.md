@@ -151,7 +151,7 @@ After steering, use `mika_task_status` to find the `message_id` in `steers`: `re
 
 ## Remote wake and unlock
 
-On the phone, open Settings › Connect a computer › Advanced settings and turn on “Allow remote wake and unlock” (off by default). Swipe/no-credential locks need no saved credential. Configure the current PIN or password twice on that page; the computer cannot set or read it.
+On the phone, open Settings › Connect a computer › Advanced settings and turn on “Allow remote wake and unlock” (off by default). Clients connecting through a self-hosted gateway also need “Allow wake and unlock through the gateway” on the Remote page (off by default); otherwise these three tools are not offered to them. Swipe/no-credential locks need no saved credential. Configure the current PIN or password twice on that page; the computer cannot set or read it.
 
 | Tool | Arguments | Purpose |
 | --- | --- | --- |

@@ -51,7 +51,10 @@ class McpRuntime(
     private var hostListen = McpModes.Listen.Off
     private val endpoints = RemoteEndpoints(tasks, BuildConfig.VERSION_NAME, device = device.access)
     private val relayAccess = RemoteAccess(token = { if (relaySettings.config.value.enabled) settings.token() else null })
-    private val relay = RelayClient(CoroutineScope(SupervisorJob() + Dispatchers.IO), { req -> relayAccess.handle(req, endpoints::handle) })
+    // 经网关来的请求要另开「允许经网关唤醒和解锁」才看得到屏幕能力;手机上的远程亮屏与解锁许可照样要开。
+    private val relay = RelayClient(CoroutineScope(SupervisorJob() + Dispatchers.IO), { req ->
+        relayAccess.handle(req) { endpoints.handle(it, deviceAccess = relaySettings.config.value.deviceAccess) }
+    })
     private val relayNetwork = RelayNetwork(context, relay::networkChanged)
     val relayState get() = relay.state
     private val active get() = listen() != McpModes.Listen.Off || relaySettings.config.value.enabled
@@ -70,6 +73,8 @@ class McpRuntime(
             throw e
         }
     }
+
+    fun setRelayDeviceAccess(on: Boolean) = relaySettings.setDeviceAccess(on)
 
     fun setRelayEnabled(on: Boolean) {
         if (!on) { relayNetwork.stop(); relay.stop() }

@@ -34,6 +34,18 @@ class RelaySettingsTest {
         assertFalse(cipher.decrypt(file.readBytes()).toString(Charsets.UTF_8).contains("clientToken"))
     }
 
+    @Test fun deviceAccessOverTheGatewayIsOffByDefaultPersistsAndResetsOnRepair() {
+        val s = settings(); s.save(pairing()); s.setEnabled(true)
+        assertFalse(s.config.value.deviceAccess)
+        s.setDeviceAccess(true)
+        assertTrue(settings().config.value.deviceAccess)
+        s.setEnabled(false); s.setEnabled(true)
+        assertTrue(settings().config.value.deviceAccess)
+        s.clear(); s.save(pairing())
+        assertFalse(settings().config.value.deviceAccess)
+        try { RelaySettings(tmp.newFolder(), AesGcmKeyCipher { key }).setDeviceAccess(true); fail() } catch (_: IllegalStateException) { }
+    }
+
     @Test fun corruptFileAndLostKeyFailClosed() {
         settings().save(pairing())
         val other = KeyGenerator.getInstance("AES").apply { init(256) }.generateKey()

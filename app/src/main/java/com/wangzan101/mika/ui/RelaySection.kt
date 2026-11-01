@@ -53,6 +53,7 @@ internal fun RelaySection(runtime: McpRuntime, mcp: Boolean, onCopy: (String) ->
     RelayControls(config, state, busy, failed,
         onPair = { url, code -> change { runtime.pairRelay(url, code) } },
         onEnabled = { on -> change { runtime.setRelayEnabled(on) } },
+        onDeviceAccess = { on -> change { runtime.setRelayDeviceAccess(on) } },
         onUnpair = { change { runtime.unpairRelay() } },
         onCopyAddress = { config.gateway?.let { onCopy(RelayGateway.parse(it).newBuilder().encodedPath(if (mcp) "/mcp" else "/").build().toString()) } },
         onCopyConfig = { change {
@@ -69,7 +70,8 @@ internal fun RelaySection(runtime: McpRuntime, mcp: Boolean, onCopy: (String) ->
 @Composable
 internal fun RelayControls(config: RelayConfig, state: RelayState, busy: Boolean, failed: Boolean,
     onPair: (String, String) -> Unit, onEnabled: (Boolean) -> Unit, onUnpair: () -> Unit,
-    onCopyAddress: () -> Unit, onCopyConfig: () -> Unit, mcp: Boolean = true, onCopyToken: () -> Unit = {}) {
+    onCopyAddress: () -> Unit, onCopyConfig: () -> Unit, mcp: Boolean = true, onCopyToken: () -> Unit = {},
+    onDeviceAccess: (Boolean) -> Unit = {}) {
     var gateway by remember { mutableStateOf("") }
     var code by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
@@ -99,6 +101,9 @@ internal fun RelayControls(config: RelayConfig, state: RelayState, busy: Boolean
         GroupCard {
             ListRow(MikaIcons.Link, stringResource(R.string.relay_enable), stringResource(status), first = true) {
                 MikaSwitch(config.enabled, onEnabled, Modifier.testTag("relay-enabled"), enabled = !busy)
+            }
+            ListRow(null, stringResource(R.string.relay_device_access), stringResource(R.string.relay_device_access_sub)) {
+                MikaSwitch(config.deviceAccess, onDeviceAccess, Modifier.testTag("relay-device-access"), enabled = !busy)
             }
             ListRow(null, stringResource(R.string.relay_gateway), config.gateway)
             RowActions {

@@ -24,4 +24,6 @@
     <string name="relay_copy_gateway">Copy gateway address</string>
     <string name="relay_cli_help">Save the access token to a file on your computer, then run the connection command above.</string>
     <string name="relay_intro">The gateway forwards the CLI and MCP requests normally sent over Wi-Fi / LAN to your phone for remote access. Deploy it on your own public server before pairing.</string>
+    <string name="relay_device_access">Allow wake and unlock through the gateway</string>
+    <string name="relay_device_access_sub">Off by default. Also needs “Allow remote wake and unlock” on this page. When both are on, anyone with the access token can wake and unlock this phone over the internet.</string>
 </resources>

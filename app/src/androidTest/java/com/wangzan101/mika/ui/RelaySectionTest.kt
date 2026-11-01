@@ -3,6 +3,7 @@ package com.wangzan101.mika.ui
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -25,6 +26,7 @@ class RelaySectionTest {
     private val config = mutableStateOf(RelayConfig())
     private val state = mutableStateOf(RelayState.Off)
     private val changes = mutableListOf<Boolean>()
+    private val deviceChanges = mutableListOf<Boolean>()
     private var paired: Pair<String, String>? = null
     private var unpaired = 0
     private var copied = 0
@@ -33,7 +35,8 @@ class RelaySectionTest {
         compose.setContent { MikaTheme {
             PageScaffold("远程", {}) {
                 RelayControls(config.value, state.value, false, false,
-                    { url, code -> paired = url to code }, changes::add, { unpaired++ }, { copied++ }, { copied++ })
+                    { url, code -> paired = url to code }, changes::add, { unpaired++ }, { copied++ }, { copied++ },
+                    onDeviceAccess = deviceChanges::add)
             }
         } }
     }
@@ -57,6 +60,8 @@ class RelaySectionTest {
         compose.onNodeWithTag("relay-code").assertDoesNotExist()
         compose.onNodeWithTag("relay-enabled").performClick()
         assertEquals(listOf(true), changes)
+        compose.onNodeWithTag("relay-device-access").performScrollTo().assertIsOff().performClick()
+        assertEquals(listOf(true), deviceChanges)
         compose.onNodeWithText("复制 MCP 地址").performScrollTo().performClick()
         assertEquals(1, copied)
         compose.onNodeWithText("解除网关配对").performScrollTo().performClick()

@@ -14,7 +14,8 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
-data class RelayConfig(val enabled: Boolean = false, val gateway: String? = null) {
+/** [deviceAccess]:经网关来的请求能否唤醒、解锁手机、读锁屏状态。默认关,配对或重新配对都回到关。 */
+data class RelayConfig(val enabled: Boolean = false, val gateway: String? = null, val deviceAccess: Boolean = false) {
     val paired get() = gateway != null
 }
 
@@ -27,7 +28,7 @@ class RelaySettings(private val dir: File, private val cipher: KeyCipher) {
         runCatching {
             read()?.takeIf { "clientToken" in it }?.let { old ->
                 val next = config(old)
-                write(RelayPairing(string(old, "gateway"), string(old, "deviceToken")), next.enabled)
+                write(RelayPairing(string(old, "gateway"), string(old, "deviceToken")), next.enabled, false)
             }
         }.onFailure { mutable.value = RelayConfig() }
     }
@@ -38,15 +39,26 @@ class RelaySettings(private val dir: File, private val cipher: KeyCipher) {
         RelayPairing(string(o, "gateway"), string(o, "deviceToken"))
     }.getOrNull()
 
-    @Synchronized fun save(pairing: RelayPairing) { write(pairing, false) }
+    @Synchronized fun save(pairing: RelayPairing) { write(pairing, false, false) }
 
     @Synchronized fun setEnabled(on: Boolean) {
         try {
             val p = pairing()
             if (p == null) { check(!on) { "Pair the gateway first" }; clear(); return }
-            write(p, on)
+            write(p, on, config.value.deviceAccess)
         } catch (e: Exception) {
             if (!on) { mutable.value = RelayConfig(); file.delete() }
+            throw e
+        }
+    }
+
+    @Synchronized fun setDeviceAccess(on: Boolean) {
+        try {
+            val p = checkNotNull(pairing()) { "Pair the gateway first" }
+            write(p, config.value.enabled, on)
+        } catch (e: Exception) {
+            // 撤销时存不下也先在进程内关掉,不留下还能用的旧许可。
+            if (!on) mutable.value = mutable.value.copy(deviceAccess = false)
             throw e
         }
     }
@@ -59,7 +71,8 @@ class RelaySettings(private val dir: File, private val cipher: KeyCipher) {
     private fun config(o: JsonObject): RelayConfig {
         val gateway = RelayGateway.parse(string(o, "gateway")).toString()
         check(Regex("[A-Za-z0-9_-]{43}").matches(string(o, "deviceToken")))
-        return RelayConfig((o["enabled"] as? JsonPrimitive)?.booleanOrNull == true, gateway)
+        return RelayConfig((o["enabled"] as? JsonPrimitive)?.booleanOrNull == true, gateway,
+            (o["deviceAccess"] as? JsonPrimitive)?.booleanOrNull == true)
     }
 
     private fun read(): JsonObject? {
@@ -68,9 +81,9 @@ class RelaySettings(private val dir: File, private val cipher: KeyCipher) {
         return try { Json.parseToJsonElement(bytes.toString(Charsets.UTF_8)) as JsonObject } finally { bytes.fill(0) }
     }
 
-    private fun write(pairing: RelayPairing, enabled: Boolean) {
+    private fun write(pairing: RelayPairing, enabled: Boolean, deviceAccess: Boolean) {
         val o = buildJsonObject {
-            put("enabled", enabled); put("gateway", pairing.gateway)
+            put("enabled", enabled); put("gateway", pairing.gateway); put("deviceAccess", deviceAccess)
             put("deviceToken", pairing.deviceToken)
         }
         val next = config(o)
