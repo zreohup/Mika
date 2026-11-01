@@ -438,6 +438,8 @@ class TaskRun(
         var afterTask: com.wangzan101.mika.core.uistate.AfterTaskMarks? = null
         var shellDeath: IBinder.DeathRecipient? = null
         var shellBinder: IBinder? = null
+        val traces = (service.application as MikaApp).detailedTraces
+        val traceTicket = traces.ticket()
         var record: RunHandle? = null
         var runStore: RunStore? = null
         // 这次运行里经计量的模型请求(含旁路调用),收尾时记进运行记录
@@ -578,6 +580,9 @@ class TaskRun(
                     runs.open(goal).also { record = it; _runId.value = it.runId }
                 }.onFailure { Log.w(TAG, "run record unavailable, running without it", it) }.getOrNull()
             } ?: RunSink.NONE
+            val trace = record?.takeIf { traceTicket != null }?.let { run ->
+                resources.acquire(Dispatchers.IO, traces.store::finish) { traces.start(traceTicket, run.runId) }
+            }
             // 装了哪些 App:每个任务读一次,读不到就当没有;参考资料用
             val apps = try { phoneScreen.listApps() } catch (e: CancellationException) { throw e } catch (e: Exception) { emptyList() }
             val speed = FeatureFlags.get(service).speedFlags()
@@ -702,7 +707,7 @@ class TaskRun(
                 gate = { w ->
                     if (phoneScreen.acquired && dispatcher?.surface != WEB) phone?.screen?.let { awaitUserPick(it, taskGate, w) }
                     taskGate.pass({ phoneScreen.acquired && dispatcher?.surface != WEB }, w)
-                }, knowledge = knowledge, sink = sink, installedApps = { apps },
+                }, knowledge = knowledge, sink = sink, trace = trace, installedApps = { apps },
                 // 选渠道用的事实:装了哪些 App、在 Mika 里登录过哪些网站、有没有内置浏览器
                 channelFacts = {
                     val registry = WebSites.registry(service)

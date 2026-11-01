@@ -107,6 +107,7 @@ fun RunTimelineScreen(vm: RunTimelineViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
+                    item("trace") { RunTraceSection(vm.runId) }
                     if (u.steps.isNotEmpty()) {
                         item("label") { GroupLabel(trPlural(R.plurals.timeline_total_steps, u.steps.size)) }
                         item("steps") {

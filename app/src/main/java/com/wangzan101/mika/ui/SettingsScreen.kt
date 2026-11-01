@@ -135,7 +135,7 @@ fun SettingsScreen(
         ),
     )
     // 开发者选项只在调试版和性能测试版里列出:发布版的各开关按评测结果统一定默认值
-    val showDeveloper = BuildConfig.DEBUG || BuildConfig.BUILD_TYPE == "perf"
+    val showDeveloper = com.wangzan101.mika.record.DetailedTraces.supportedBuild
     val toHome = { page = SettingsPage.Home }
     // 通知页可以从首页或手机操作页进,返回回到进来的那一页
     var notificationsFrom by rememberSaveable { mutableStateOf(SettingsPage.Home) }
@@ -150,7 +150,8 @@ fun SettingsScreen(
 
     if (page != SettingsPage.Home) BackHandler { back() }
 
-    when (page) {
+    val visiblePage = if (!showDeveloper && (page == SettingsPage.Developer || page == SettingsPage.RunStats)) SettingsPage.Home else page
+    when (visiblePage) {
         SettingsPage.Home -> SettingsContent(
             status = status, androidRelease = androidRelease,
             mainModel = roles.main?.let { id -> configs.firstOrNull { it.id == id } }?.let(ProviderConnection::displayName),
