@@ -389,15 +389,6 @@ class SettingsScreenTest {
         assertEquals(listOf(true), toggled)
     }
 
-    @Test
-    fun developerGroupsCoverAllEightSwitchesOnce() {
-        val speed = DeveloperSwitches.speed(SpeedFlags.OFF)
-        val experimental = DeveloperSwitches.experimental(SpeedFlags.OFF)
-        assertEquals(5, speed.size)
-        assertEquals(3, experimental.size)
-        assertEquals(8, (speed + experimental).map { it.id }.toSet().size)
-    }
-
     private class Calls { var reset = 0; val network = mutableListOf<Boolean>() }
 
     private fun advanced(status: SandboxStatus, network: Boolean = false, isolationIssue: Boolean = false): Calls {

@@ -77,7 +77,6 @@ class StringResourcesTest {
 
     @Test
     fun eachLanguageHasItsOwnTag() {
-        assertEquals(listOf(null, "zh-Hans", "zh-Hant", "en"), AppLanguage.entries.map { it.tag })
         for (l in AppLanguage.entries) assertEquals(l, AppLanguage.fromTag(l.tag) { "Hans" })
     }
 

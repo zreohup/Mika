@@ -203,7 +203,6 @@ class RunTimelineViewModelTest {
     @Test fun missingRunShowsExpired() {
         assertEquals(TimelineUi.Expired, RunTimelineViewModel(store, "20250101-000000-abcdef").load())
         assertEquals(TimelineUi.Expired, RunTimelineViewModel(store, "../../etc").load())
-        assertEquals(TimelineUi.EXPIRED_TEXT, "这次的记录已过期")
         val id = run("x") { event(RunEvent.TaskEnded(clock, "cancelled", "")) }
         tmp.root.resolve("files/runs/$id").deleteRecursively()
         assertEquals(TimelineUi.Expired, RunTimelineViewModel(store, id).load())

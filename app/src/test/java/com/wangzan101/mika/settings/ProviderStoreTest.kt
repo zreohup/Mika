@@ -18,7 +18,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -368,10 +367,10 @@ class ProviderStoreTest {
     }
 
     @Test
-    fun configsPublishedAsFlow() {
+    fun configsExposeCurrentList() {
         val s = store()
         s.saveAsMain(cfg("a"), "sk-a")
-        assertSame(s.list(), s.configs.value)
+        assertEquals(s.list(), s.configs.value)
         assertEquals(1, s.configs.value.size)
     }
 

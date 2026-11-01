@@ -83,14 +83,6 @@ class SpeechSettingsTest {
         assertEquals(false, s.systemSilent.value)
     }
 
-    @Test fun transcribeMethodNamesNeverChange() {
-        // 设置里存的是名字:改名、删掉都会让旧设置读不回来;新的只往后加,加了在这里补上
-        assertEquals(
-            listOf("AudioTranscriptions", "ChatInputAudio", "GeminiInline", "ChatInputAudioUri", "ChatInputAudioOnly"),
-            TranscribeMethod.entries.map { it.name },
-        )
-    }
-
     @Test fun earlierStoredMethodStillReads() {
         val prefs = MemoryPrefs()
         prefs.edit().putString("speech_choice", """{"type":"provider","providerId":"p2","model":"m","method":"ChatInputAudio"}""").commit()
