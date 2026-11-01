@@ -272,7 +272,10 @@ class ChatViewModel(
     private val takeoverStage: StateFlow<Takeover.Stage>,
     private val actions: TaskActions,
     private val store: ConversationStore,
-    /** 服务还在收尾上一个任务;这时开始的新任务要等它收完再交给服务,否则会被忽略。 */
+    /**
+     * 服务还有任务(这个对话上一个任务还在收尾,或别处开始的任务在跑);并行关着时新任务等它收完再交给服务,
+     * 免得这个对话的新一句被当成上一个任务的插话。等着时那条消息下面写「等前一个任务做完再开始」。
+     */
     private val serviceBusy: StateFlow<Boolean> = MutableStateFlow(false),
     /** 包名换成 App 显示名(确认卡片用)。 */
     private val appLabel: (String) -> String = { it },
@@ -673,6 +676,13 @@ class ChatViewModel(
         }
         // 并行时服务忙着(别的对话的任务在跑)也直接交给它
         if (serviceBusy.value && !parallel()) {
+            // 等着的这段时间说清楚在等什么,不让它看着像卡住了;交给服务后由任务自己的状态接着写
+            _ui.update { ui ->
+                val exchanges = ui.exchanges.toMutableList()
+                exchanges[liveIndex] = exchanges[liveIndex].copy(line = tr(R.string.chat_wait_previous_task))
+                ui.copy(exchanges = exchanges)
+            }
+            // 交过去时别处(定时、电脑)可能刚好先开始了一个:服务把它排在那个后面,不丢
             pendingStart = scope.launch {
                 serviceBusy.first { !it }
                 pendingStart = null
@@ -857,7 +867,10 @@ class ChatViewModel(
         }
         val pending = pendingStart
         if (pending == null || !pending.isActive) {
-            act({ actions.cancel() }) { actions.cancelIn(it) }
+            // 这个对话在服务里有任务(在跑或排着队)就只停它:不带编号的停止按服务显示中的任务算,
+            // 这条还排在别处开始的任务后面时,停掉的会是那个任务
+            val id = _ui.value.conversationId
+            if (id != null && id in activeConversations.value) actions.cancelIn(id) else act({ actions.cancel() }) { actions.cancelIn(it) }
             return
         }
         // 任务还没交给服务:作废这次开始;服务里正在收尾的是上一个任务,不去碰它

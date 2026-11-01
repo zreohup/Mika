@@ -581,7 +581,7 @@ class CapsuleController(
      * 空闲卡片也改成接着这个对话(新开的对话标题就是这句话)。
      */
     private fun startIn(conversationId: String, text: String) {
-        TaskService.start(context, text, conversationId, queue = true)
+        TaskService.start(context, text, conversationId)
         follow = conversationId
         idle = idle?.let { CardView.Chat(conversationId, title = if (it.target == conversationId) it.title else ScreenCopy.plain(text)) }
     }

@@ -46,7 +46,7 @@
 `TaskCenter`(`app/task/TaskRegistry.kt`,由 `TaskService` 持有)管运行的启动、排队与收尾:
 
 - 每个对话同时只有一个 Run。同一对话里任务进行中用户又发消息,不另开任务,而是作为插话交给正在跑的 Run(`TaskService.begin`)。
-- 不同对话的任务可以并行,上限见 §8;超过上限的进先进先出队列,有 Run 结束时依次补上(跳过对话里已有 Run 的)。并行开关关着(默认)时,任务进行中界面不能切换对话(`ChatViewModel.canSwitch`、侧栏 `ChatDrawer` 里别的对话不可点并有提示),界面发起的另一个对话的任务也不进队列、直接忽略(`TaskService.begin`);只有定时任务和留下的消息会排队。
+- 不同对话的任务可以并行,上限见 §8;超过上限的进先进先出队列,有 Run 结束时依次补上(跳过对话里已有 Run 的)。并行开关关着(默认)时,任务进行中界面不能切换对话(`ChatViewModel.canSwitch`、侧栏 `ChatDrawer` 里别的对话不可点并有提示),交给服务的另一个对话的任务(对话页、悬浮胶囊、浏览器页、定时、电脑)一律进队列,不丢(`TaskService.begin`)。对话页先等服务空下来再交(这时那条消息下面写「等前一个任务做完再开始」,`ChatViewModel.begin`),防的是同一个对话里上一个任务还在收尾时,新的一句被当成插话;查完到交到之间别处先开始了一个任务,它照样排上,那个任务收尾后开始。这时点停止只停这个对话的任务(`TaskActions.cancelIn`),不碰正在跑的那个。
 - 定时任务到点时,如果原对话正有任务在跑,就在这个对话里排队等它结束(`queueInConversation`),不当成插话,也不丢。
 - 运行状态写进 `runs-v3.json`(`app/task/FileRunStateStore.kt`,原子替换写入)。
 - `app/task/TaskCenterState.kt` 只是界面要显示的状态(运行列表、并行上限、插话状态等)。
