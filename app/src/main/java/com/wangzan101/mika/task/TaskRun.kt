@@ -737,7 +737,9 @@ class TaskRun(
                 scheduleAdmin = if (provenance.origin == RunOrigin.Ui) LocalScheduleAdmin(service) else null,
                 childHost = childRunner,
                 // 用户要求时写下或改写个人技能(和自学收下的放在同一处,设置里立刻能看到)
-                personalSkills = memoryRuntime.skills())
+                personalSkills = memoryRuntime.skills(),
+                // 这个对话之前几轮的运行记录(只读;history_read 只认 runSpec 里这个对话的轮次)
+                runRecords = RunStore(service).reader())
             dispatcher = tools
             val agent = AgentLoop(
                 model, tools,

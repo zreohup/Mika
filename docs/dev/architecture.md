@@ -68,7 +68,7 @@
 - **撤回与编辑插话**:默认仍直接插给当前任务。对话页长按尚未交给模型的消息,可以撤回或取回编辑;`RunInbox.withdrawSteer` 与 `takeSteers`、收尾共用一把锁,已交给模型或已收尾时返回失败。成功后标为 `SteerState.Withdrawn`,对话页和胶囊不再显示,也不计入已加入的插话。任务尚未交给服务时从 `ChatViewModel.held` 撤回。编辑恢复正文与引用,输入框已有草稿、引用或附件时不提供编辑;悬浮胶囊带着屏幕、浏览器页带着页面说明插的话不提供编辑(`editableSteer`):取回来时输入框开头是屏幕标记或几行页面说明原文,删掉就丢了屏幕和页面,改坏就认不出页面。电脑追加的插话(`SteerNote.remote`)也显示在对话里,但不提供撤回和编辑,收件箱也拒绝撤回(编辑会把只归当前任务的话变成手机插话、可能转成下一件事;撤不撤由电脑定);`remoteSteers` 把 `Withdrawn` 按 `not_applied` 报,不多出对外状态。
 - **没来得及处理的插话**:运行结束时还没消费的插话,如果用户没按停止,就成为这个对话的下一个任务;按了停止的丢掉(`TaskRun.handoffUnconsumed` 只管收尾时未消费的)。运行已关闭后才到的插话,由 `TaskRun.steer` 收不进收件箱时 `deferMessage`,或 `TaskService.begin` 发现任务已收尾时排成下一个任务。
 - **停止**:Cancel 是控制信号,不在插话后面排队。`TaskRun.cancel` 同时取消子任务;接管中就结束接管;排队中的直接移出队列。
-- **停止后的交代**:界面当场显示已停止,输入框空出来;随后补上几行交代当作这一轮的回答(做过什么、看到了什么、成批的事发出了几次和是哪些、哪些没做完),结局照旧是取消(评测、结果分类、学习都按取消算)。`TaskService` 收尾时先把运行编号登记进 `TaskCenterState.summarizing`(界面据此在「已停止」下面写「正在整理已做的事…」),记下「已取消」那一轮,再在进程级作用域里由 `TaskRun.stopSummary` 写,写好用 `ConversationStore.updateTurn` 改进那一轮,写好或写不成都拿掉登记;不挡着收尾、下一件事和再点停止。写法在 `StopSummary`(`core/agent/StopSummary.kt`):只读这次的运行记录(活动、那一步的用意、最近读到的两段、停下时写了一半的字,有上限,不带画面),请一次模型(轻量模型优先,出错换主模型,不给工具,总共 12 秒),没模型、出错、超时就按记录直接拼(`StopSummary.plain`)。对外动作(发送、提交)按活动上的 `outward`(`ActionExecutor` 照不可逆判定标上)数。什么也没做、也没写出字的只说已停止。下一轮的上文里写成「你中途停止了这次任务,停止前:…」(`Conversation.context`),「继续」知道从哪接着做。
+- **停止后的交代**:界面当场显示已停止,输入框空出来;随后补上几行交代当作这一轮的回答(做过什么、看到了什么、成批的事发出了几次和是哪些、哪些没做完),结局照旧是取消(评测、结果分类、学习都按取消算)。`TaskService` 收尾时先把运行编号登记进 `TaskCenterState.summarizing`(界面据此在「已停止」下面写「正在整理已做的事…」),记下「已取消」那一轮,再在进程级作用域里由 `TaskRun.stopSummary` 写,写好用 `ConversationStore.updateTurn` 改进那一轮,写好或写不成都拿掉登记;不挡着收尾、下一件事和再点停止。写法在 `StopSummary`(`core/agent/StopSummary.kt`):只读这次的运行记录(活动、那一步的用意、最近读到的两段、停下时写了一半的字,有上限,不带画面),请一次模型(轻量模型优先,出错换主模型,不给工具,总共 12 秒),没模型、出错、超时就按记录直接拼(`StopSummary.plain`)。对外动作(发送、提交)按活动上的 `outward`(`ActionExecutor` 照不可逆判定标上)数。什么也没做、也没写出字的只说已停止。下一轮的上文里写成「你中途停止了这次任务,停止前:…」(`Conversation.context`),「继续」知道从哪接着做。之前几轮读到的原文不进上文,要用时模型自己查(`history_read`,见「之前几轮的记录」)。
 
 ### 送达
 
@@ -137,7 +137,7 @@
 能力由 `CapabilityProvider` 按 `RunSpec` 装配(`core/assembly/RunAssembler.kt`、`TaskTools.kt`),每个 Run 开局装一次:
 
 - 按 `spec.capabilities` 选能力;无人在场的运行去掉追问、确认、接管、建定时、改画像这几个工具;只读运行只留只读工具(外加网页打开地址)。
-- 通用工具(`core/general/`)一直都在:`ask_user`、`hand_to_user`、`handle_obstacle`、`end_not_done`、`wait`、`view_past_screens` 等。条件满足才提供的:`request_confirmation`(花钱前请用户同意;有确认关卡才有:询问模式、有人在场时)、记忆工具(「使用记忆」打开才有)、知识与技能查阅(有知识目录才有,`LookupTools`)、`schedule_task`、`spawn_agent`。
+- 通用工具(`core/general/`)一直都在:`ask_user`、`hand_to_user`、`handle_obstacle`、`end_not_done`、`wait`、`view_past_screens` 等。条件满足才提供的:`request_confirmation`(花钱前请用户同意;有确认关卡才有:询问模式、有人在场时)、记忆工具(「使用记忆」打开才有)、知识与技能查阅(有知识目录才有,`LookupTools`)、`schedule_task`、`spawn_agent`、`history_read`(有运行记录、之前有记过运行的轮次才有)。
 
 ### phone:手机 App
 
@@ -213,6 +213,10 @@
 ### 子任务
 
 `spawn_agent`(`core/general/SpawnAgent.kt`、`core/child/ChildRuns.kt`)派一个子任务去查一个有边界的问题:只有网页和沙箱、只读、无人在场、默认 15 步(模型可传 `maxSteps`,1–40),不能追问、不能对外发送、不能写记忆、不能建定时、不能再派子任务,也没有知识与技能查阅工具。结果有长度上限(默认 4,000 字,模型可传 `maxResultChars`,500–8,000;超出范围的拉回范围内,不是整数的按参数错退回;截掉时结果里写 `truncated`),作为不可信的观察交回父任务;一次只派一个,父任务等它做完;子任务做完不等于用户的目标完成。只在对话界面发起、有网页能力的运行里提供。
+
+### 之前几轮的记录
+
+对话的上文只带最近几轮的结局(`Conversation.context`:最多 5 轮、2,500 token),之前几轮读到的原文不带。`history_read`(`core/general/HistoryRead.kt`)让模型自己查:不带 `turn` 列出之前的轮次(新的在前,最多 20 轮:第几轮、用户原话、结局、开始时刻、还有没有详细记录);带 `turn`(1 = 刚过去的那一轮)读那一轮的完整结局、用户中途插的话、Mika 的进度说明(带了调用的回复里的字)和读到的原文(运行记录里的 `observed`,同样的原文只给一次),按条分页(`offset` / `nextOffset`,一页约 8,000 字,一条最多 2,000 字),不带截图。只认这次运行开局带来的、同一个对话的轮次(`RunSpec.priorTurns` 里的 `Turn.runId`),别的对话、别的运行查不到;只读。原文取自运行记录(`core/record/RunRecords.kt`,app 一侧是 `RunStore.reader()`,在 IO 线程上读),落盘时已脱敏、截短,读出来原样给;网页一类不可信的照样包进 `<untrusted>`。读到的原文作为观察交给核查(来源记为 `history`),回答里用到之前读到的值时有据可查。运行记录只留最近 30 次,更早的那一轮只剩结局(`recorded=false`)。有运行记录、之前有记过运行的轮次时才提供,这时上文末尾多一句提示(`feedback/loop.md` 里的 history_hint 一条)。子任务没有之前的轮次,不提供。讨论历史时(意图判为讨论)也能调它。
 
 ### 电脑连接:CLI 与 MCP
 

@@ -42,6 +42,8 @@ internal class ToolConfig(
     val personalSkills: com.wangzan101.mika.core.skills.PersonalSkills? = null,
     /** 改 Mika 自己设置的白名单入口;为空(用户没允许)时不提供 settings_list、settings_set。 */
     val selfConfig: com.wangzan101.mika.core.settings.SelfConfig? = null,
+    /** 存下的运行记录;给了、而这个对话之前有记过运行的轮次时提供 history_read。 */
+    val runRecords: com.wangzan101.mika.core.record.RunRecords? = null,
 )
 
 /**
