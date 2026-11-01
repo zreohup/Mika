@@ -30,7 +30,13 @@ sealed interface SpeechFailure {
     data object NoPermission : SpeechFailure
     data object Busy : SpeechFailure
     data object Network : SpeechFailure
+    /** 麦克风起不来(识别服务报客户端出错、开始听时抛错、服务商那条路的录音起不来):多半是被别的应用占着。 */
     data object MicUnavailable : SpeechFailure
+    /**
+     * 识别服务报录音出错(ERROR_AUDIO):录音权限给了也可能录不到,例如系统的麦克风使用总开关关着,
+     * 或系统权限管理里单独关掉了麦克风。界面据此说明该去哪里看。
+     */
+    data object AudioError : SpeechFailure
     data class Provider(val error: ModelError) : SpeechFailure
     data class Unavailable(val why: SpeechEngineSpec.Why) : SpeechFailure
 }

@@ -127,7 +127,7 @@ private val CancelLift = 80.dp
 /** 底部弹层:哪种说明。 */
 internal sealed interface VoiceSheet {
     data object Permission : VoiceSheet
-    /** 安卓已经允许录音,识别服务仍说没有权限或麦克风起不来:多半是厂商另外关了,或被别的应用占用。 */
+    /** 已经允许录音,识别服务仍说没有权限或录音出错:说明系统的麦克风总开关和权限管理,或被别的应用占用。 */
     data object MicBlocked : VoiceSheet
     data class Unavailable(val why: SpeechEngineSpec.Why) : VoiceSheet
 }
@@ -145,7 +145,7 @@ internal object VoiceCopy {
     fun failure(why: SpeechFailure): String = when (why) {
         SpeechFailure.Busy -> tr(R.string.voice_busy)
         SpeechFailure.Network -> tr(R.string.voice_network)
-        SpeechFailure.MicUnavailable -> tr(R.string.voice_mic_unavailable)
+        SpeechFailure.MicUnavailable, SpeechFailure.AudioError -> tr(R.string.voice_mic_unavailable)
         // 服务商的错沿用模型出错时的说法(额度、Key、找不到模型……)
         is SpeechFailure.Provider -> tr(R.string.voice_provider_failed, why.error.message.orEmpty())
         SpeechFailure.NoPermission -> tr(R.string.voice_permission_title)
@@ -288,9 +288,10 @@ internal fun rememberVoiceHold(voice: VoiceSource?, onText: (String) -> Unit): V
                 when (val why = s.why) {
                     null -> vh.toast = VoiceCopy.NO_MATCH
                     is SpeechFailure.Unavailable -> vh.sheet = VoiceSheet.Unavailable(why.why)
-                    // 安卓权限还没给:照旧弹系统框或「去设置」。已经给了仍报没有权限,和麦克风起不来一样,说明厂商开关或被占用
+                    // 录音权限还没给:照旧弹系统框或「去设置」。已经给了仍报没有权限,或识别服务报录音出错:
+                    // 另弹说明(系统的麦克风总开关、权限管理)。麦克风起不来的其他情况照旧提示可能被占用
                     SpeechFailure.NoPermission -> if (vh.ensureMic()) vh.sheet = VoiceSheet.MicBlocked
-                    SpeechFailure.MicUnavailable -> vh.sheet = VoiceSheet.MicBlocked
+                    SpeechFailure.AudioError -> vh.sheet = VoiceSheet.MicBlocked
                     else -> vh.toast = VoiceCopy.failure(why)
                 }
                 vh.hold.reset()

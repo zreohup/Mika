@@ -41,7 +41,8 @@ object SystemSpeech {
         SpeechRecognizer.ERROR_NETWORK, SpeechRecognizer.ERROR_NETWORK_TIMEOUT,
         SpeechRecognizer.ERROR_SERVER, ERROR_SERVER_DISCONNECTED -> SpeechFailure.Network
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> SpeechFailure.NoPermission
-        SpeechRecognizer.ERROR_AUDIO, SpeechRecognizer.ERROR_CLIENT -> SpeechFailure.MicUnavailable
+        SpeechRecognizer.ERROR_AUDIO -> SpeechFailure.AudioError
+        SpeechRecognizer.ERROR_CLIENT -> SpeechFailure.MicUnavailable
         else -> SpeechFailure.Unavailable(SpeechEngineSpec.Why.SystemGone)
     }
 
