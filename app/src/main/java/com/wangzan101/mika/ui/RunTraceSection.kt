@@ -31,24 +31,35 @@ import com.wangzan101.mika.ui.theme.MikaIcons
 import com.wangzan101.mika.ui.theme.MikaType
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.IOException
+
+/** 运行还在录 Trace 时,多久重读一次。 */
+private const val TRACE_REFRESH_MS = 1_000L
 
 @Composable
 internal fun RunTraceSection(runId: String) {
     val context = LocalContext.current
     val store = (context.applicationContext as MikaApp).detailedTraces.store
-    val archive by produceState<TraceArchive?>(null, runId) { value = withContext(Dispatchers.IO) { store.archive(runId) } }
-    archive?.let { TraceDetails(it) }
+    // 运行过程页在任务跑着时就能打开:还在录就按秒重读,录完再读最后一次就停
+    val loaded by produceState<Pair<TraceArchive, List<TraceRow>>?>(null, runId) {
+        var archive: TraceArchive? = null
+        while (true) {
+            val live = store.recording(runId)
+            withContext(Dispatchers.IO) {
+                (archive ?: store.archive(runId))?.let { it to try { it.rows() } catch (_: IOException) { emptyList() } }
+            }?.let { archive = it.first; value = it }
+            if (!live) break
+            delay(TRACE_REFRESH_MS)
+        }
+    }
+    loaded?.let { (archive, rows) -> TraceDetails(archive, rows) }
 }
 
 @Composable
-private fun TraceDetails(archive: TraceArchive) {
-    val rows by produceState<List<TraceRow>?>(null, archive) {
-        value = withContext(Dispatchers.IO) { try { archive.rows() } catch (_: IOException) { emptyList() } }
-    }
-    val all = rows ?: return
+private fun TraceDetails(archive: TraceArchive, all: List<TraceRow>) {
     val root = all.firstOrNull()
     var expanded by rememberSaveable(archive.runId) { mutableStateOf(false) }
     GroupCard {

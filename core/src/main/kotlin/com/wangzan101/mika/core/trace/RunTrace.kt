@@ -59,6 +59,9 @@ class TraceStore(private val directory: File, private val byteLimit: Int = 8 * 1
         active.clear()
     }
 
+    /** The run is still writing spans: a viewer opened mid-run has to read again to see later requests. */
+    @Synchronized fun recording(id: String): Boolean = id in active
+
     fun archive(id: String): TraceArchive? = if (TraceDisk.RUN_ID.matches(id))
         TraceArchive(File(directory, id), disk).takeIf { it.root.isFile } else null
 
