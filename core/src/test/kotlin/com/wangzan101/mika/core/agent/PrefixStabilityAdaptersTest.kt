@@ -149,7 +149,7 @@ class PrefixStabilityAdaptersTest {
         )
     }
 
-    /** OpenAI 兼容接口里要标缓存的那种(如通义千问):每次把标记挪到最后一条。 */
+    /** OpenAI 兼容接口里要标缓存的那种(部分服务商的兼容接口如此):每次把标记挪到最后一条。 */
     private val explicitCompat = object : Api {
         override fun model(url: String, vision: Boolean, contextTokens: Int) = OpenAiCompatModel(
             "$url/v1", "k", "m", Capabilities(true, vision, contextTokens, false, promptCaching = PromptCaching.Explicit), OkHttpClient(),
@@ -163,8 +163,8 @@ class PrefixStabilityAdaptersTest {
             body["tools"]!!.jsonArray.map { it.toString() to it.jsonObject["function"]!!.jsonObject.str("name")!! }
 
         /**
-         * 标记时字符串内容换成一段文字块,不再是最后一条时又是字符串:比对时当成同一条。依据是阿里云百炼「上下文缓存」文档
-         * (https://help.aliyun.com/zh/model-studio/context-cache,2026-11-01 查的)的例子:第一次以数组带标记发 system 消息,
+         * 标记时字符串内容换成一段文字块,不再是最后一条时又是字符串:比对时当成同一条。依据是某服务商兼容接口的
+         * 上下文缓存文档(2026-11-01 查的)的例子:第一次以数组带标记发 system 消息,
          * 第二次同样的内容以字符串发,照样命中;文档只举了 system 消息,别的角色同样处理是推断。
          */
         private fun plain(m: JsonObject): JsonObject {
