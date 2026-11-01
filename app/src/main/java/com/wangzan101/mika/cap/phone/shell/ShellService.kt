@@ -1004,14 +1004,8 @@ class ShellService(
         return send(n - 1, MotionEvent.ACTION_UP) || send(n - 1, MotionEvent.ACTION_UP)
     }
 
-    /**
-     * 只有 DOWN 就没注入成功时才退回 shell 命令;DOWN 已送达后再退回会造成一次多余的完整点击/按键,
-     * 这时只补发 UP(失败重试一次)。
-     */
-    private inline fun injectPair(down: InputEvent, up: InputEvent, displayId: Int, fallback: () -> Boolean): Boolean {
-        if (!inject(down, displayId)) return fallback()
-        return inject(up, displayId) || inject(up, displayId)
-    }
+    private inline fun injectPair(down: InputEvent, up: InputEvent, displayId: Int, fallback: () -> Boolean): Boolean =
+        sendPair({ inject(down, displayId) }, { inject(up, displayId) }, fallback)
 
     /**
      * `appops set <pkg> PLAY_AUDIO ignore`;首次静音时记下原模式(同时落文件),取消静音时恢复。
@@ -1330,7 +1324,7 @@ class ShellService(
         event.javaClass.getMethod("setDisplayId", Int::class.java).invoke(event, displayId)
         val manager = inputManager()
         manager.javaClass.getMethod("injectInputEvent", InputEvent::class.java, Int::class.java)
-            .invoke(manager, event, if (waitForFinish) INJECT_MODE_WAIT_FOR_FINISH else INJECT_MODE_ASYNC) as Boolean
+            .invoke(manager, event, injectMode(event is KeyEvent, waitForFinish)) as Boolean
     } catch (t: Throwable) {
         Log.w(TAG, "injectInputEvent failed", t)
         false
@@ -1429,6 +1423,7 @@ class ShellService(
         private val TASK_INFO: Class<*> by lazy { Class.forName("android.app.TaskInfo") }
         private val WCT: Class<*> by lazy { Class.forName("android.window.WindowContainerTransaction") }
         private const val INJECT_MODE_ASYNC = 0 // InputManager.INJECT_INPUT_EVENT_MODE_ASYNC
+        private const val INJECT_MODE_WAIT_FOR_RESULT = 1 // InputManager.INJECT_INPUT_EVENT_MODE_WAIT_FOR_RESULT
         private const val INJECT_MODE_WAIT_FOR_FINISH = 2 // InputManager.INJECT_INPUT_EVENT_MODE_WAIT_FOR_FINISH
         private const val VIRTUAL_KEYBOARD = -1 // KeyCharacterMap.VIRTUAL_KEYBOARD
         private const val USER_CURRENT = -2 // UserHandle.USER_CURRENT
@@ -1467,6 +1462,26 @@ class ShellService(
                 flags = flags or FLAG_OWN_FOCUS or FLAG_STEAL_TOP_FOCUS_DISABLED
             }
             return flags
+        }
+
+        /**
+         * 注入方式。按键等到系统定下投给谁(WAIT_FOR_RESULT):屏上没有能接按键的窗口时注入报失败,调用方才会退回 shell 命令
+         * 或报动作失败,不再「发了就算成」;只等派发、不等 App 处理完,最多等到系统自己的注入超时。
+         * 触摸照旧不等(ASYNC):一笔划要按时间逐点送,等派发会打乱快慢。[waitForFinish] 的(主屏解锁输入)等 App 处理完。
+         */
+        internal fun injectMode(key: Boolean, waitForFinish: Boolean): Int = when {
+            waitForFinish -> INJECT_MODE_WAIT_FOR_FINISH
+            key -> INJECT_MODE_WAIT_FOR_RESULT
+            else -> INJECT_MODE_ASYNC
+        }
+
+        /**
+         * 一对按下/抬起:只有按下就没注入成功时才走 [fallback](shell 命令);按下已送达后再退回会造成一次多余的完整点击/按键,
+         * 这时只补发抬起(失败重试一次)。
+         */
+        internal inline fun sendPair(down: () -> Boolean, up: () -> Boolean, fallback: () -> Boolean): Boolean {
+            if (!down()) return fallback()
+            return up() || up()
         }
 
         /** 只有缺权限(SecurityException,如 shell 没有 ADD_TRUSTED_DISPLAY)才值得去掉可信标志再试;别的失败照旧报错。 */
