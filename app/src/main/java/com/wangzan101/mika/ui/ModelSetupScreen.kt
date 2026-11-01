@@ -191,7 +191,8 @@ fun ModelSetupScreen(
                 ModelSetupActions(
                     selectPreset = vm::selectPreset, setKind = vm::setKind, setBaseUrl = vm::setBaseUrl, setApiKey = vm::setApiKey,
                     setModel = vm::setModel, setManual = vm::setManual, setName = vm::setName,
-                    testAndSave = vm::testAndSave, openForm = vm::openForm, closeForm = vm::closeForm,
+                    testAndSave = vm::testAndSave, saveUntested = vm::saveWithoutTest,
+                    openForm = vm::openForm, closeForm = vm::closeForm,
                     openProvider = { openProvider = it; allModels = false }, pickRole = { picking = it }, next = onDone, openSpeech = onOpenSpeech,
                     openSignIn = { signInSheet = it },
                     setReasoningEffort = vm::setReasoningEffort,
@@ -236,6 +237,8 @@ class ModelSetupActions(
     val setManual: (Boolean) -> Unit = {},
     val setName: (String) -> Unit = {},
     val testAndSave: () -> Unit = {},
+    /** 不测试,直接保存(见 [ModelSetupViewModel.saveWithoutTest])。 */
+    val saveUntested: () -> Unit = {},
     val openForm: () -> Unit = {},
     val closeForm: () -> Unit = {},
     val openProvider: (String) -> Unit = {},
@@ -299,7 +302,10 @@ private fun ProvidersSection(ui: ModelSetupUi, actions: ModelSetupActions) {
         GroupCard {
             ui.providers.forEachIndexed { i, p ->
                 val line = if (ui.signedOut(p)) ModelsCopy.CHATGPT_SIGNED_OUT else ModelsCopy.providerLine(p, ui.listing[p.id], ui.rolesOf(p))
-                val warning = ModelsCopy.UNVERIFIED.takeIf { ui.unverified(p).isNotEmpty() }
+                // 有用着却没试通过的模型、或跳过测试存下且已经在用:这一行就提醒「没测试通过」
+                val warning = ModelsCopy.UNVERIFIED.takeIf {
+                    ui.unverified(p).isNotEmpty() || (ui.untested(p) && ui.rolesOf(p).isNotEmpty())
+                }
                 ProviderRow(p, line, first = i == 0, warning = warning) { actions.openProvider(p.id) }
             }
             if (!ui.showForm) {
@@ -330,6 +336,7 @@ private fun AddProviderForm(ui: ModelSetupUi, actions: ModelSetupActions) {
     val c = MikaTheme.colors
     val f = ui.form
     var showKey by remember { mutableStateOf(false) }
+    var confirmUntested by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         GroupLabel(ModelsCopy.ADD_PROVIDER, Modifier.weight(1f))
         if (ui.providers.isNotEmpty()) {
@@ -416,6 +423,26 @@ private fun AddProviderForm(ui: ModelSetupUi, actions: ModelSetupActions) {
             fontSize = 13.sp, lineHeight = 18.sp, color = c.bad,
         )
     }
+    // 试不成又想先存下的:做成按钮,不要藏成一行小字——它是个真实的动作,不是说明
+    MikaButton(
+        ModelSetupCopy.SAVE_UNTESTED, { confirmUntested = true },
+        Modifier.fillMaxWidth().padding(top = 6.dp).testTag("setup-save-untested"),
+        kind = ButtonKind.Tonal, size = ButtonSize.Small, enabled = f.canSaveUntested,
+    )
+    if (confirmUntested) AlertDialog(
+        onDismissRequest = { confirmUntested = false },
+        title = { Text(ModelSetupCopy.SAVE_UNTESTED_TITLE) },
+        text = { Text(ModelSetupCopy.SAVE_UNTESTED_BODY) },
+        confirmButton = {
+            TextButton({
+                confirmUntested = false
+                actions.saveUntested()
+            }) { Text(ModelSetupCopy.SAVE_UNTESTED_CONFIRM) }
+        },
+        dismissButton = {
+            TextButton({ confirmUntested = false }) { Text(stringResource(R.string.cancel)) }
+        },
+    )
     FooterNote(ModelSetupCopy.TEST_NOTE, Modifier.padding(top = 6.dp))
 }
 
@@ -597,6 +624,10 @@ object ModelSetupCopy {
     val MANUAL_ON: String get() = tr(R.string.model_manual_on)
     val MANUAL_OFF: String get() = tr(R.string.model_manual_off)
     val MANUAL_NOTE: String get() = tr(R.string.model_manual_note)
+    val SAVE_UNTESTED: String get() = tr(R.string.model_save_untested)
+    val SAVE_UNTESTED_TITLE: String get() = tr(R.string.model_save_untested_title)
+    val SAVE_UNTESTED_BODY: String get() = tr(R.string.model_save_untested_body)
+    val SAVE_UNTESTED_CONFIRM: String get() = tr(R.string.model_save_untested_confirm)
 
     /** 手填模型名时举的例子,按接口类型(各家模型名的样子不同)。 */
     fun modelExample(kind: ProviderConfig.Kind): String = tr(
