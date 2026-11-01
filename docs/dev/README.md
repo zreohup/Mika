@@ -2,7 +2,7 @@
 
 简体中文 | [English](README.en.md)
 
-写给想读代码、改代码、补知识的人。怎么构建、怎么提 PR，先看[贡献指南](../../CONTRIBUTING.md)。用户文档在[上一级](../README.md)。
+写给想读代码、改代码、补知识的人。怎么构建、怎么提 PR，先看[贡献指南](../../.github/CONTRIBUTING.zh-CN.md)。用户文档在[上一级](../README.md)。
 
 ## 先读
 

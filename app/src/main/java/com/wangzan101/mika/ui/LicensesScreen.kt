@@ -27,7 +27,7 @@ import com.wangzan101.mika.ui.components.SubPage
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.MikaType
 
-/** 许可证页上第三方组件的数据;与仓库根目录 THIRD_PARTY_NOTICES.md 的条目一一对应(LicensesTest 核对)。 */
+/** 许可证页上第三方组件的数据;与仓库 licenses/THIRD_PARTY_NOTICES.md 的条目一一对应(LicensesTest 核对)。 */
 object Licenses {
     data class Entry(val name: String, val license: String, val note: String)
 

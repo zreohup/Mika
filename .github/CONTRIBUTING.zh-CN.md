@@ -1,14 +1,14 @@
 # 参与贡献
 
-简体中文 | [English](CONTRIBUTING.en.md)
+[English](CONTRIBUTING.md) | 简体中文
 
 欢迎一起把 Mika 做得更好。最简单的是补一份 App、网站的使用知识，不用写代码；也欢迎报告问题、贡献代码。
 
 ## 补充 App / 网站知识（不用写代码）
 
-最简单的贡献：给某个 App 写一份 `APP.md`、给某个网站写一份 `SITE.md`，或者改进已有的。它们是带头部的 Markdown 纯文本，放在 [`core/src/main/resources/knowledge/`](core/src/main/resources/knowledge/) 下；几类事情的通用做法（技能）在 [`core/src/main/resources/skills/`](core/src/main/resources/skills/) 下。格式见 [`docs/dev/knowledge-format.md`](docs/dev/knowledge-format.md)。
+最简单的贡献：给某个 App 写一份 `APP.md`、给某个网站写一份 `SITE.md`，或者改进已有的。它们是带头部的 Markdown 纯文本，放在 [`core/src/main/resources/knowledge/`](../core/src/main/resources/knowledge/) 下；几类事情的通用做法（技能）在 [`core/src/main/resources/skills/`](../core/src/main/resources/skills/) 下。格式见 [`docs/dev/knowledge-format.md`](../docs/dev/knowledge-format.md)。
 
-没有任何说明，Mika 也能看着屏幕把事办成；写了使用知识（入口在哪、常见做法、要注意什么）的 App 和网站，Mika 用到时自动查阅，少走弯路。现有清单见 [README](README.md) 里「能做什么」下面的折叠段。
+没有任何说明，Mika 也能看着屏幕把事办成；写了使用知识（入口在哪、常见做法、要注意什么）的 App 和网站，Mika 用到时自动查阅，少走弯路。现有清单见 [README](../docs/readme/README.zh-CN.md) 里「能做什么」下面的折叠段。
 
 ## 报告问题
 
@@ -16,7 +16,7 @@
 
 ## 贡献代码
 
-欢迎 PR。先读 [`docs/dev/architecture.md`](docs/dev/architecture.md)（按代码现状写，带类名和文件路径）和 [`docs/dev/roadmap.md`](docs/dev/roadmap.md)（已完成、接下来、已知问题）。改动请带单元测试。
+欢迎 PR。先读 [`docs/dev/architecture.md`](../docs/dev/architecture.md)（按代码现状写，带类名和文件路径）和 [`docs/dev/roadmap.md`](../docs/dev/roadmap.md)（已完成、接下来、已知问题）。改动请带单元测试。
 
 ### 构建与测试
 
@@ -33,9 +33,9 @@
 
 - 仓库有两个模块：`:core` 是纯 Kotlin，主循环、工具、提示词、知识都在这里，可以在电脑上用单测和假模型跑；`:app` 是安卓宿主。
 - README 里夹在 `generated` 标记之间的段落由 `./gradlew updateReadme` 生成，不要手改；单元测试会检查它们没过期。
-- README 有几种语言：中文 `README.md` 是原文，`README.en.md` 是英文版（和中文版一样带生成段落），`README.zh-Hant.md`、`README.ja.md`、`README.ko.md`、`README.es.md` 是译文，生成段落换成一句指向中文或英文 README 的话。每份译文开头有 `<!-- translated-from: README.md @ <指纹> -->`，指纹是 README.md 去掉生成段落后的 SHA-256 前 12 位。改了 README.md 以后，`ReadmeTranslationsTest` 会列出过期的译文并给出新指纹：照着改动更新译文，再把开头的指纹换成新的。译文还要和 README.md 的 `## ` 小节数、本地图片保持一致。欢迎母语使用者直接提 PR 改进译文。
-- 沙箱的原生程序和自带运行环境已在仓库里；重新构建见 [`tools/sandbox/README.md`](tools/sandbox/README.md)。
-- 真机评测见 [`eval/README.md`](eval/README.md)。
+- README 有几种语言：仓库根目录的英文 `README.md` 是原文，译文都在 `docs/readme/`。其中简体中文 `README.zh-CN.md` 和 `README.md` 一样带生成段落；`README.zh-Hant.md`、`README.ja.md`、`README.ko.md`、`README.es.md` 的生成段落换成一句指向英文或简体中文 README 的话。根目录的 `README.en.md` 只是一句指向 `README.md` 的话，留着让旧链接还能用。每份译文开头有 `<!-- translated-from: README.md @ <指纹> -->`，指纹是根目录 README.md 去掉生成段落后的 SHA-256 前 12 位。改了 README.md 以后，`ReadmeTranslationsTest` 会列出过期的译文并给出新指纹：照着改动更新译文，再把开头的指纹换成新的。译文还要和 README.md 的 `## ` 小节数、本地图片保持一致。欢迎母语使用者直接提 PR 改进译文。
+- 沙箱的原生程序和自带运行环境已在仓库里；重新构建见 [`tools/sandbox/README.md`](../tools/sandbox/README.md)。
+- 真机评测见 [`eval/README.md`](../eval/README.md)。
 
 ### 模型配置细节
 
@@ -46,13 +46,13 @@
 
 ### 文档
 
-开发文档的目录和阅读顺序见 [`docs/dev/README.md`](docs/dev/README.md)；面向用户的文档目录见 [`docs/README.md`](docs/README.md)。
+开发文档的目录和阅读顺序见 [`docs/dev/README.md`](../docs/dev/README.md)；面向用户的文档目录见 [`docs/README.md`](../docs/README.md)。
 
-- [`docs/dev/architecture.md`](docs/dev/architecture.md)：整体结构。
-- [`docs/dev/roadmap.md`](docs/dev/roadmap.md)：已完成、接下来、已知问题与暂缓。
-- [`docs/dev/knowledge-format.md`](docs/dev/knowledge-format.md)（[English](docs/dev/knowledge-format.en.md)）：App、网站知识与技能的格式。
-- [`docs/dev/skill-scripts.md`](docs/dev/skill-scripts.md)：知识与技能自带的沙箱脚本。
-- 面向用户的说明：[功能详细说明](docs/features.md)、[模型与登录](docs/models.md)、[询问与自主](docs/modes.md)、[手机操作设置指南](docs/setup-guide.md)、[常见问题](docs/faq.md)、[从电脑使用 Mika](docs/computer.md)、[电脑端 CLI / Skill](docs/computer-install.md)、[电脑连接（MCP）](docs/mcp.md)、[免责声明与数据隐私](docs/disclaimer.md)。
+- [`docs/dev/architecture.md`](../docs/dev/architecture.md)：整体结构。
+- [`docs/dev/roadmap.md`](../docs/dev/roadmap.md)：已完成、接下来、已知问题与暂缓。
+- [`docs/dev/knowledge-format.md`](../docs/dev/knowledge-format.md)（[English](../docs/dev/knowledge-format.en.md)）：App、网站知识与技能的格式。
+- [`docs/dev/skill-scripts.md`](../docs/dev/skill-scripts.md)：知识与技能自带的沙箱脚本。
+- 面向用户的说明：[功能详细说明](../docs/features.md)、[模型与登录](../docs/models.md)、[询问与自主](../docs/modes.md)、[手机操作设置指南](../docs/setup-guide.md)、[常见问题](../docs/faq.md)、[从电脑使用 Mika](../docs/computer.md)、[电脑端 CLI / Skill](../docs/computer-install.md)、[电脑连接（MCP）](../docs/mcp.md)、[免责声明与数据隐私](../docs/disclaimer.md)。
 
 ### 发布与更新（维护者）
 

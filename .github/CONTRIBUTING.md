@@ -1,14 +1,14 @@
 # Contributing
 
-[简体中文](CONTRIBUTING.md) | English
+English | [简体中文](CONTRIBUTING.zh-CN.md)
 
 Help make Mika better. The easiest way is to add usage knowledge for an app or website, which needs no code; bug reports and code are welcome too.
 
 ## Add app / website knowledge (no code needed)
 
-The easiest contribution: write an `APP.md` for an app or a `SITE.md` for a website, or improve an existing one. They are plain-text Markdown files with a header, under [`core/src/main/resources/knowledge/`](core/src/main/resources/knowledge/); general how-to skills for a few kinds of tasks live under [`core/src/main/resources/skills/`](core/src/main/resources/skills/). See [`docs/dev/knowledge-format.en.md`](docs/dev/knowledge-format.en.md) for the format. Existing knowledge is in Chinese, but new files can be written in English.
+The easiest contribution: write an `APP.md` for an app or a `SITE.md` for a website, or improve an existing one. They are plain-text Markdown files with a header, under [`core/src/main/resources/knowledge/`](../core/src/main/resources/knowledge/); general how-to skills for a few kinds of tasks live under [`core/src/main/resources/skills/`](../core/src/main/resources/skills/). See [`docs/dev/knowledge-format.en.md`](../docs/dev/knowledge-format.en.md) for the format. Existing knowledge is in Chinese, but new files can be written in English.
 
-Mika can get things done just by looking at the screen; for apps and websites with usage knowledge (where things are, common ways to do things, what to watch out for), it looks the knowledge up when needed and takes fewer wrong turns. The current list is in the collapsed section under "What it can do" in the [README](README.en.md).
+Mika can get things done just by looking at the screen; for apps and websites with usage knowledge (where things are, common ways to do things, what to watch out for), it looks the knowledge up when needed and takes fewer wrong turns. The current list is in the collapsed section under "What it can do" in the [README](../README.md).
 
 ## Reporting issues
 
@@ -16,7 +16,7 @@ When opening an issue, please include your **phone model, Android version and Mi
 
 ## Contributing code
 
-PRs welcome. Start with [`docs/dev/architecture.md`](docs/dev/architecture.md) (written against the current code, with class names and file paths) and [`docs/dev/roadmap.md`](docs/dev/roadmap.md) (done, next, known issues). Please include unit tests with your changes. The developer docs are in Chinese for now.
+PRs welcome. Start with [`docs/dev/architecture.md`](../docs/dev/architecture.md) (written against the current code, with class names and file paths) and [`docs/dev/roadmap.md`](../docs/dev/roadmap.md) (done, next, known issues). Please include unit tests with your changes. The developer docs are in Chinese for now.
 
 ### Build and test
 
@@ -33,9 +33,9 @@ The debug build is not precompiled and its UI is several times slower; use the p
 
 - The repository has two modules: `:core` is pure Kotlin and holds the main loop, tools, prompts and knowledge, and can be run on a computer with unit tests and a fake model; `:app` is the Android host.
 - README sections between the `generated` markers are produced by `./gradlew updateReadme`; don't edit them by hand. Unit tests check that they are up to date.
-- The README comes in several languages. The Chinese `README.md` is the original; `README.en.md` is the English version (with the same generated sections); `README.zh-Hant.md`, `README.ja.md`, `README.ko.md` and `README.es.md` are translations, where the generated sections are replaced by one sentence pointing to the Chinese or English README. Each translation starts with `<!-- translated-from: README.md @ <fingerprint> -->`, where the fingerprint is the first 12 hex digits of the SHA-256 of README.md with the generated sections removed. After you change README.md, `ReadmeTranslationsTest` lists the stale translations and prints the new fingerprint: update the translations to match, then replace the fingerprint at the top. Translations must also keep the same number of `## ` sections and the same local images as README.md. Native speakers are welcome to improve a translation with a PR.
-- The sandbox's native binaries and bundled runtime are checked into the repository; to rebuild them see [`tools/sandbox/README.md`](tools/sandbox/README.md).
-- For on-device evaluation see [`eval/README.md`](eval/README.md).
+- The README comes in several languages. The English `README.md` at the repository root is the original; the translations are in `docs/readme/`. `README.zh-CN.md` (Simplified Chinese) has the same generated sections as `README.md`; in `README.zh-Hant.md`, `README.ja.md`, `README.ko.md` and `README.es.md` the generated sections are replaced by one sentence pointing to the English or Simplified Chinese README. `README.en.md` at the root only points to `README.md`, kept so old links still work. Each translation starts with `<!-- translated-from: README.md @ <fingerprint> -->`, where the fingerprint is the first 12 hex digits of the SHA-256 of the root README.md with the generated sections removed. After you change README.md, `ReadmeTranslationsTest` lists the stale translations and prints the new fingerprint: update the translations to match, then replace the fingerprint at the top. Translations must also keep the same number of `## ` sections and the same local images as README.md. Native speakers are welcome to improve a translation with a PR.
+- The sandbox's native binaries and bundled runtime are checked into the repository; to rebuild them see [`tools/sandbox/README.md`](../tools/sandbox/README.md).
+- For on-device evaluation see [`eval/README.md`](../eval/README.md).
 
 ### Model configuration details
 
@@ -46,13 +46,13 @@ The debug build is not precompiled and its UI is several times slower; use the p
 
 ### Docs
 
-The developer docs index and reading order are in [`docs/dev/README.en.md`](docs/dev/README.en.md); the user docs index is [`docs/README.en.md`](docs/README.en.md).
+The developer docs index and reading order are in [`docs/dev/README.en.md`](../docs/dev/README.en.md); the user docs index is [`docs/README.en.md`](../docs/README.en.md).
 
-- [`docs/dev/architecture.md`](docs/dev/architecture.md): overall structure.
-- [`docs/dev/roadmap.md`](docs/dev/roadmap.md): done, next, known issues and deferred items.
-- [`docs/dev/knowledge-format.en.md`](docs/dev/knowledge-format.en.md): format of app and website knowledge and skills.
-- [`docs/dev/skill-scripts.md`](docs/dev/skill-scripts.md): sandbox scripts that come with knowledge and skills.
-- User-facing guides: [features in detail](docs/features.en.md), [models and sign-in](docs/models.en.md), [Ask and Autonomous](docs/modes.en.md), [phone control setup](docs/setup-guide.en.md), [FAQ](docs/faq.en.md), [use Mika from a computer](docs/computer.en.md), [computer CLI / Skill](docs/computer-install.en.md), [computer access (MCP)](docs/mcp.en.md), [disclaimer, data and privacy](docs/disclaimer.en.md).
+- [`docs/dev/architecture.md`](../docs/dev/architecture.md): overall structure.
+- [`docs/dev/roadmap.md`](../docs/dev/roadmap.md): done, next, known issues and deferred items.
+- [`docs/dev/knowledge-format.en.md`](../docs/dev/knowledge-format.en.md): format of app and website knowledge and skills.
+- [`docs/dev/skill-scripts.md`](../docs/dev/skill-scripts.md): sandbox scripts that come with knowledge and skills.
+- User-facing guides: [features in detail](../docs/features.en.md), [models and sign-in](../docs/models.en.md), [Ask and Autonomous](../docs/modes.en.md), [phone control setup](../docs/setup-guide.en.md), [FAQ](../docs/faq.en.md), [use Mika from a computer](../docs/computer.en.md), [computer CLI / Skill](../docs/computer-install.en.md), [computer access (MCP)](../docs/mcp.en.md), [disclaimer, data and privacy](../docs/disclaimer.en.md).
 
 ### Releases and updates (maintainers)
 

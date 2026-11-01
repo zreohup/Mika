@@ -1,7 +1,7 @@
-<!-- translated-from: README.md @ 28ff67918ea1 -->
+<!-- translated-from: README.md @ e407f162fc39 -->
 <div align="center">
 
-<img src="docs/media/logo.png" alt="Mika" width="88" />
+<img src="../media/logo.png" alt="Mika" width="88" />
 
 # Mika
 
@@ -14,15 +14,15 @@
 <a href="https://github.com/wangzan101/Mika/stargazers"><img src="https://img.shields.io/github/stars/wangzan101/Mika?style=flat&logo=github&label=Star&color=1f6feb" alt="stars" /></a>
 <a href="https://github.com/wangzan101/Mika/releases"><img src="https://img.shields.io/github/downloads/wangzan101/Mika/total?label=%EB%8B%A4%EC%9A%B4%EB%A1%9C%EB%93%9C&color=2ea043" alt="downloads" /></a>
 <a href="https://github.com/wangzan101/Mika/releases/latest"><img src="https://img.shields.io/github/v/release/wangzan101/Mika?include_prereleases&label=%EB%B2%84%EC%A0%84" alt="version" /></a>
-<a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-lightgrey" alt="license" /></a>
+<a href="../../LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-lightgrey" alt="license" /></a>
 
-[简体中文](README.md) · [English](README.en.md) · [繁體中文](README.zh-Hant.md) · [日本語](README.ja.md) · 한국어 · [Español](README.es.md)
+[English](../../README.md) · [简体中文](README.zh-CN.md) · [繁體中文](README.zh-Hant.md) · [日本語](README.ja.md) · 한국어 · [Español](README.es.md)
 
 <sub>이 한국어판은 중국어(간체) 원문을 번역한 것입니다. 어색한 표현이나 원문과 다른 부분이 보이면 PR로 고쳐 주세요.</sub>
 
 <br/>
 
-<img src="docs/media/wechat-send-side.gif" alt="한마디에 Mika가 백그라운드 화면에서 WeChat을 열고, 상대를 찾아 메시지를 보내는 모습" width="640" />
+<img src="../media/wechat-send-side.gif" alt="한마디에 Mika가 백그라운드 화면에서 WeChat을 열고, 상대를 찾아 메시지를 보내는 모습" width="640" />
 
 <sub>"파일 전송 도우미에게 메시지 보내 줘" 한마디: 왼쪽은 Mika와의 대화, 오른쪽은 백그라운드 화면에서 진행한 모든 단계(4배속, 채팅 목록은 모자이크 처리)</sub>
 
@@ -32,9 +32,9 @@
 
 <table>
 <tr>
-<td align="center" width="33%"><img src="docs/media/wechat-group.gif" width="230" alt="WeChat 단톡방을 끝까지 읽고 오늘 나온 이야기를 요약" /><br/><b>"단톡방에서 오늘 무슨 얘기 했는지 정리해 줘"</b><br/><sub>백그라운드에서 대화 기록을 다 읽고 요약</sub></td>
-<td align="center" width="33%"><img src="docs/media/amazon-cart.gif" width="230" alt="쇼핑 사이트에서 충전기를 골라 장바구니에 담기" /><br/><b>"30달러 이하, 별점 4.5 이상인 충전기"</b><br/><sub>골라서 장바구니에 담고 결제 직전에 멈춤</sub></td>
-<td align="center" width="33%"><img src="docs/media/xhs-summary.gif" width="230" alt="한 크리에이터의 최근 게시물을 요약" /><br/><b>"이 크리에이터가 요즘 뭘 올렸는지 정리해 줘"</b><br/><sub>앱을 열어 하나씩 본 뒤 정리</sub></td>
+<td align="center" width="33%"><img src="../media/wechat-group.gif" width="230" alt="WeChat 단톡방을 끝까지 읽고 오늘 나온 이야기를 요약" /><br/><b>"단톡방에서 오늘 무슨 얘기 했는지 정리해 줘"</b><br/><sub>백그라운드에서 대화 기록을 다 읽고 요약</sub></td>
+<td align="center" width="33%"><img src="../media/amazon-cart.gif" width="230" alt="쇼핑 사이트에서 충전기를 골라 장바구니에 담기" /><br/><b>"30달러 이하, 별점 4.5 이상인 충전기"</b><br/><sub>골라서 장바구니에 담고 결제 직전에 멈춤</sub></td>
+<td align="center" width="33%"><img src="../media/xhs-summary.gif" width="230" alt="한 크리에이터의 최근 게시물을 요약" /><br/><b>"이 크리에이터가 요즘 뭘 올렸는지 정리해 줘"</b><br/><sub>앱을 열어 하나씩 본 뒤 정리</sub></td>
 </tr>
 </table>
 
@@ -43,14 +43,14 @@
 
 <table>
 <tr>
-<td align="center" width="33%"><img src="docs/media/boss-greet.gif" width="230" alt="채용 사이트에서 공고 3개에 인사 보내기" /><br/>채용 사이트에서 공고 3개에 인사 보내기</td>
-<td align="center" width="33%"><img src="docs/media/google-flights.gif" width="230" alt="가장 싼 직항편 찾기" /><br/>샌프란시스코발 뉴욕행 최저가 직항 찾기</td>
-<td align="center" width="33%"><img src="docs/media/hacker-news.gif" width="230" alt="상위 5개 기사와 점수를 읽어 주기" /><br/>뉴스 사이트 첫 페이지 상위 5개 읽어 주기</td>
+<td align="center" width="33%"><img src="../media/boss-greet.gif" width="230" alt="채용 사이트에서 공고 3개에 인사 보내기" /><br/>채용 사이트에서 공고 3개에 인사 보내기</td>
+<td align="center" width="33%"><img src="../media/google-flights.gif" width="230" alt="가장 싼 직항편 찾기" /><br/>샌프란시스코발 뉴욕행 최저가 직항 찾기</td>
+<td align="center" width="33%"><img src="../media/hacker-news.gif" width="230" alt="상위 5개 기사와 점수를 읽어 주기" /><br/>뉴스 사이트 첫 페이지 상위 5개 읽어 주기</td>
 </tr>
 <tr>
-<td align="center"><img src="docs/media/job-greet.jpg" width="230" alt="채용 공고를 찾아 인사 보내기" /><br/>채용 공고를 찾아 인사 보내기</td>
-<td align="center"><img src="docs/media/music-vip.jpg" width="230" alt="광고를 보고 음악 앱 혜택 받기" /><br/>광고를 보고 음악 앱 혜택 받기</td>
-<td align="center"><img src="docs/media/food-order.jpg" width="230" alt="할인 조건을 맞춰 배달 주문, 결제 전에 확인" /><br/>할인 조건을 맞춰 배달 주문, 결제 전에 확인</td>
+<td align="center"><img src="../media/job-greet.jpg" width="230" alt="채용 공고를 찾아 인사 보내기" /><br/>채용 공고를 찾아 인사 보내기</td>
+<td align="center"><img src="../media/music-vip.jpg" width="230" alt="광고를 보고 음악 앱 혜택 받기" /><br/>광고를 보고 음악 앱 혜택 받기</td>
+<td align="center"><img src="../media/food-order.jpg" width="230" alt="할인 조건을 맞춰 배달 주문, 결제 전에 확인" /><br/>할인 조건을 맞춰 배달 주문, 결제 전에 확인</td>
 </tr>
 </table>
 
@@ -72,8 +72,8 @@
 ## 3단계로 시작하기
 
 1. **설치**: [Releases](https://github.com/wangzan101/Mika/releases/latest)에서 APK를 내려받습니다.
-2. **모델 연결**: Settings › Model에서 제공업체를 골라 API 키를 입력하거나, 계정으로 바로 로그인합니다([모델과 로그인](docs/models.en.md)).
-3. **휴대폰 앱을 조작하게 하려면**: 설정의 "Set up phone control" 마법사를 따라 휴대폰에서 무선 디버깅을 한 번 페어링합니다([설정 가이드](docs/setup-guide.en.md)). 채팅, 웹, 파일 작업만 할 거라면 이 단계는 건너뛰어도 됩니다.
+2. **모델 연결**: Settings › Model에서 제공업체를 골라 API 키를 입력하거나, 계정으로 바로 로그인합니다([모델과 로그인](../models.en.md)).
+3. **휴대폰 앱을 조작하게 하려면**: 설정의 "Set up phone control" 마법사를 따라 휴대폰에서 무선 디버깅을 한 번 페어링합니다([설정 가이드](../setup-guide.en.md)). 채팅, 웹, 파일 작업만 할 거라면 이 단계는 건너뛰어도 됩니다.
 
 이제 말을 걸어 보세요: "내일 아침 9시 40분이랑 10시에 알람 맞춰 줘", "매일 아침 8시에 날씨 보고 비 올 때만 알려 줘".
 
@@ -91,25 +91,25 @@
 | **언제든 끼어들고, 언제든 멈추기** | 작업 중에도 계속 말해서 요구 사항을 더할 수 있고, 아직 반영되지 않은 말은 길게 눌러 취소하거나 수정할 수 있습니다. 멈추면 어디까지 했는지 알려 주고, "계속"이라고 하면 이어서 합니다 |
 | **눌러서 말하기** | 입력창을 누른 채 말하면 글자가 들어가고, 고친 뒤 보낼 수 있습니다. 플로팅 캡슐은 길게 눌러 말하고 손을 떼면 바로 보냅니다. 휴대폰의 음성 인식을 쓰고, 없으면 제공자의 음성 모델을 고를 수 있습니다 |
 | **파일과 계산** | 대화마다 Linux 샌드박스가 있어 Python, Node, 셸로 보내 준 파일을 처리합니다(arm64) |
-| **컴퓨터에서도 사용** | 컴퓨터의 AI 도구가 CLI + Skill 또는 MCP로 Mika에게 일을 맡길 수 있습니다([컴퓨터에서 Mika 쓰기](docs/computer.en.md)) |
+| **컴퓨터에서도 사용** | 컴퓨터의 AI 도구가 CLI + Skill 또는 MCP로 Mika에게 일을 맡길 수 있습니다([컴퓨터에서 Mika 쓰기](../computer.en.md)) |
 
-기본값은 **확인 모드**입니다. 돈이 드는 일(주문, 결제)만 먼저 물어보고 나머지는 끝까지 해냅니다. **자율 모드**로 바꿀 수도 있습니다. 자세한 내용은 [확인 모드와 자율 모드](docs/modes.en.md)를 보세요.
+기본값은 **확인 모드**입니다. 돈이 드는 일(주문, 결제)만 먼저 물어보고 나머지는 끝까지 해냅니다. **자율 모드**로 바꿀 수도 있습니다. 자세한 내용은 [확인 모드와 자율 모드](../modes.en.md)를 보세요.
 
-각 기능의 사용법과 세부 사항은 [기능 자세히 보기](docs/features.en.md)에 있습니다.
+각 기능의 사용법과 세부 사항은 [기능 자세히 보기](../features.en.md)에 있습니다.
 
 <details>
 <summary>사용 지식이 준비된 앱과 사이트(목록에 없어도 그냥 쓸 수 있습니다)</summary>
 
-전체 목록은 영어판 README의 [What it can do](README.en.md#what-it-can-do)에 있으며, 내장 지식에 맞춰 자동으로 갱신됩니다.
+전체 목록은 영어판 README의 [What it can do](../../README.md#what-it-can-do)에 있으며, 내장 지식에 맞춰 자동으로 갱신됩니다.
 
 </details>
 
 <details>
 <summary>지원하는 모델 제공업체</summary>
 
-내장된 제공업체 프리셋과 "Custom"으로 연결할 수 있는 API 종류는 영어판 README의 [What it can do](README.en.md#what-it-can-do)에 목록이 있으며, 코드에 맞춰 자동으로 갱신됩니다.
+내장된 제공업체 프리셋과 "Custom"으로 연결할 수 있는 API 종류는 영어판 README의 [What it can do](../../README.md#what-it-can-do)에 목록이 있으며, 코드에 맞춰 자동으로 갱신됩니다.
 
-API 키 없이 ChatGPT(Plus / Pro), xAI / Grok, OpenRouter 계정으로 로그인할 수도 있습니다. 모델을 추가하는 방법과 서비스별 로그인 시 주의할 점은 [모델과 로그인](docs/models.en.md)에 정리해 두었습니다.
+API 키 없이 ChatGPT(Plus / Pro), xAI / Grok, OpenRouter 계정으로 로그인할 수도 있습니다. 모델을 추가하는 방법과 서비스별 로그인 시 주의할 점은 [모델과 로그인](../models.en.md)에 정리해 두었습니다.
 
 </details>
 
@@ -127,14 +127,14 @@ API 키 없이 ChatGPT(Plus / Pro), xAI / Grok, OpenRouter 계정으로 로그�
 
 - **Mika 서버는 없습니다**: 내가 한 말과 화면 내용은 직접 설정한 모델 제공업체에만 전송됩니다.
 - API 키와 기억은 암호화되어 휴대폰에 저장되고, 대화와 실행 기록은 기기에만 남습니다. 업데이트 확인은 GitHub에만 접속합니다.
-- 다른 회사의 앱이나 사이트를 자동으로 조작하면 이용 약관에 어긋날 수 있으니 스스로 판단하세요. 중요한 일은 확인 모드로 하고 결과를 확인하세요. 자세한 내용은 [면책 조항](docs/disclaimer.en.md)을 보세요.
+- 다른 회사의 앱이나 사이트를 자동으로 조작하면 이용 약관에 어긋날 수 있으니 스스로 판단하세요. 중요한 일은 확인 모드로 하고 결과를 확인하세요. 자세한 내용은 [면책 조항](../disclaimer.en.md)을 보세요.
 
 <details>
 <summary><b>자주 묻는 질문</b></summary>
 
 **무선 디버깅이 저절로 꺼져요?** Android는 Wi-Fi를 바꾸거나 재부팅하면 무선 디버깅을 끕니다. 허용해 두면 Mika가 알아서 다시 켭니다. 그래도 연결되지 않으면 "Set up phone control"로 돌아가 다시 페어링하세요.
 
-**무선 디버깅 메뉴가 안 보여요?** 이 항목이 아예 없는 휴대폰도 있습니다. 그럴 땐 컴퓨터에서 USB로 휴대폰 도우미를 실행할 수 있습니다. [설정 가이드](docs/setup-guide.en.md)를 보세요.
+**무선 디버깅 메뉴가 안 보여요?** 이 항목이 아예 없는 휴대폰도 있습니다. 그럴 땐 컴퓨터에서 USB로 휴대폰 도우미를 실행할 수 있습니다. [설정 가이드](../setup-guide.en.md)를 보세요.
 
 **읽지 못하거나 캡처되지 않는 화면이 있어요?** 결제나 비밀번호 입력 같은 화면은 스크린샷이 막혀 있어서, Mika가 직접 처리해 달라고 요청합니다.
 
@@ -144,17 +144,17 @@ API 키 없이 ChatGPT(Plus / Pro), xAI / Grok, OpenRouter 계정으로 로그�
 
 **업데이트는 어디서 받나요?** 이 저장소의 [Releases](https://github.com/wangzan101/Mika/releases)에서만 배포합니다. 앱의 About › Check for updates에서도 바로 업데이트할 수 있습니다.
 
-더 많은 질문과 답은 [FAQ](docs/faq.en.md)에 있습니다.
+더 많은 질문과 답은 [FAQ](../faq.en.md)에 있습니다.
 
 </details>
 
 ## 커뮤니티와 기여
 
-- **문서**: 모든 문서와 추천 읽기 순서는 [문서 목록](docs/README.en.md)에 있습니다
+- **문서**: 모든 문서와 추천 읽기 순서는 [문서 목록](../README.en.md)에 있습니다
 - **커뮤니티**: [X 그룹 채팅](https://x.com/i/chat/group_join/g2116500883139862983/xP74Qyff3X)에 참여하세요. WeChat으로 작성자에게 연락하려면 앱의 About › Contact the author에 있는 QR 코드를 스캔하세요(친구 신청에 "Mika"라고 적어 주세요)
 - **작성자 팔로우**: X [@wangzan101](https://x.com/wangzan101)
 - **문제 신고**: [Issue 열기](https://github.com/wangzan101/Mika/issues/new/choose). 앱의 About › Send feedback에서 진단 정보를 첨부할 수 있습니다
-- **기여하기**: 앱이나 사이트의 사용 지식을 보태 주세요(일반 텍스트라 코드를 몰라도 됩니다). 코드 기여도 환영합니다. [기여 가이드](CONTRIBUTING.en.md)를 보세요
+- **기여하기**: 앱이나 사이트의 사용 지식을 보태 주세요(일반 텍스트라 코드를 몰라도 됩니다). 코드 기여도 환영합니다. [기여 가이드](../../.github/CONTRIBUTING.md)를 보세요
 
 ## Star History
 
@@ -175,4 +175,4 @@ Mika에 함께해 주신 모든 분께 감사드립니다:
 
 ## 라이선스
 
-[Apache-2.0](LICENSE) · [NOTICE](NOTICE) · [서드파티 구성 요소](THIRD_PARTY_NOTICES.md)
+[Apache-2.0](../../LICENSE) · [NOTICE](../../NOTICE) · [서드파티 구성 요소](../../licenses/THIRD_PARTY_NOTICES.md)

@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | English
 
-For people who want to read or change the code, or add knowledge. For building and opening PRs, read the [contributing guide](../../CONTRIBUTING.en.md) first. User docs are [one level up](../README.en.md).
+For people who want to read or change the code, or add knowledge. For building and opening PRs, read the [contributing guide](../../.github/CONTRIBUTING.md) first. User docs are [one level up](../README.en.md).
 
 Apart from the knowledge format, the developer docs are in Chinese for now.
 

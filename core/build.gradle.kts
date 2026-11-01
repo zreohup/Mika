@@ -40,7 +40,7 @@ sourceSets.main { resources.srcDir(knowledgeIndex) }
 // README 里会变的清单(内置知识、服务商预设)从源头重新生成,见 testFixtures 里的 ReadmeSections;ReadmeSectionsTest 守着两边一致
 val updateReadme by tasks.registering(JavaExec::class) {
     group = "documentation"
-    description = "重新生成 README.md、README.en.md 里 generated 标记之间的段落"
+    description = "重新生成 README.md、docs/readme/README.zh-CN.md 里 generated 标记之间的段落"
     classpath = sourceSets["testFixtures"].runtimeClasspath
     mainClass.set("com.wangzan101.mika.core.docs.ReadmeSections")
     args(rootProject.projectDir.absolutePath)
@@ -76,8 +76,8 @@ tasks.test {
     classpath = sourceSets.main.get().output + classpath
     // TaskSetTest 读仓库根目录的评测任务集
     inputs.dir(rootProject.file("eval")).withPropertyName("evalTasks")
-    // DocsConsistencyTest、ReadmeTranslationsTest 读仓库根目录的文档(各语言的 README),并对照 app 的源码;文档或 app 源码变了要重跑
-    inputs.files(listOf("README.md", "README.en.md", "README.zh-Hant.md", "README.ja.md", "README.ko.md", "README.es.md").map(rootProject::file), rootProject.file("tools/sandbox/README.md")).withPropertyName("docsFiles")
+    // DocsConsistencyTest、ReadmeTranslationsTest 读仓库的文档(根目录 README.md,docs/readme/ 下各语言的译文在 docs 里),并对照 app 的源码;文档或 app 源码变了要重跑
+    inputs.files(rootProject.file("README.md"), rootProject.file("tools/sandbox/README.md")).withPropertyName("docsFiles")
     inputs.dir(rootProject.file("docs")).withPropertyName("docsDir")
     inputs.dir(rootProject.file("app/src")).withPropertyName("appSources")
     // updateReadme 先改写 README,同一次构建里测试要读改写后的
