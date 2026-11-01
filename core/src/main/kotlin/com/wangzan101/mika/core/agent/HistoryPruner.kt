@@ -35,8 +35,11 @@ object HistoryPruner {
     const val OMITTED_READ = "(content read earlier, omitted; read it again with nextOffset, path and so on if needed)"
     /** 缩短后的结果里指回证据账本的观察编号。 */
     const val OBS_IDS = "obsIds"
-    /** 超过这么多 token 的工具结果算「大结果」。 */
-    const val BIG_RESULT_TOKENS = 2_000
+    /**
+     * 超过这么多 token 的工具结果算「大结果」。工具结果多是英文和 JSON(约 4 个字符一个 token),
+     * 取原来 4000 字符那条线对应的 token 数,英文结果的裁法不变;中文结果按真实占用算,比原来更早算大。
+     */
+    const val BIG_RESULT_TOKENS = 1_000
 
     /** 线之前各种观察怎么缩短。 */
     private enum class Shrink { Interface, IfBig, Never }

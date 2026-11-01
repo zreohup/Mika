@@ -21,9 +21,6 @@ object MemoryContext {
     const val MAX_TOKENS = 800
     /** 全量注入的总上限;超过就说明该退回检索了(见 [Mode.Auto])。 */
     const val FULL_MAX_TOKENS = 4_000
-    /** 旧名字,按 token 计。 */
-    const val MAX_CHARS = MAX_TOKENS
-    const val FULL_MAX_CHARS = FULL_MAX_TOKENS
     const val MAX_PINNED = 5
     const val MAX_RELEVANT = 8
     const val MAX_PROCEDURES = 3

@@ -323,6 +323,8 @@ private class ResponsesStream(
         fun int(o: JsonObject?, k: String) = (o?.get(k) as? JsonPrimitive)?.intOrNull
         val input = int(u, "input_tokens") ?: return null
         val cached = int(u["input_tokens_details"] as? JsonObject, "cached_tokens") ?: 0
-        return Usage(input, int(u, "output_tokens") ?: 0, cached.coerceAtMost(input))
+        val output = int(u, "output_tokens") ?: 0
+        val reasoning = (int(u["output_tokens_details"] as? JsonObject, "reasoning_tokens") ?: 0).coerceIn(0, output)
+        return Usage(input, output, cached.coerceAtMost(input), reasoning)
     }
 }

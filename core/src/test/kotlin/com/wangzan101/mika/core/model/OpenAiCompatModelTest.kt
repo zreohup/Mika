@@ -296,6 +296,14 @@ class OpenAiCompatModelTest {
         assertEquals(Usage(500, 7, 0), model().complete("sys", user, emptyList()).usage)
     }
 
+    @Test fun readsReasoningTokensDetails() = runTest {
+        server.enqueue(ok("""{"choices":[{"finish_reason":"stop","message":{"content":"hi"}}],"usage":{"prompt_tokens":500,"completion_tokens":70,"completion_tokens_details":{"reasoning_tokens":64}}}"""))
+        assertEquals(Usage(500, 70, 0, reasoningTokens = 64), model().complete("sys", user, emptyList()).usage)
+        // 报得比输出还多的按输出截
+        server.enqueue(ok("""{"choices":[{"finish_reason":"stop","message":{"content":"hi"}}],"usage":{"prompt_tokens":500,"completion_tokens":7,"completion_tokens_details":{"reasoning_tokens":64}}}"""))
+        assertEquals(Usage(500, 7, 0, reasoningTokens = 7), model().complete("sys", user, emptyList()).usage)
+    }
+
     @Test fun cachedTakesLargerFieldClampedToInput() = runTest {
         server.enqueue(ok("""{"choices":[{"finish_reason":"stop","message":{"content":"hi"}}],"usage":{"prompt_tokens":900,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":100},"prompt_cache_hit_tokens":640}}"""))
         assertEquals(Usage(900, 1, 640), model().complete("sys", user, emptyList()).usage)

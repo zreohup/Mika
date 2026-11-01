@@ -239,7 +239,8 @@ class GeminiModel(
         fun n(k: String) = (u[k] as? JsonPrimitive)?.intOrNull
         val inT = n("promptTokenCount") ?: return null
         // promptTokenCount 已含缓存命中部分,与统一口径一致
-        return Usage(inT, (n("candidatesTokenCount") ?: 0) + (n("thoughtsTokenCount") ?: 0), n("cachedContentTokenCount") ?: 0)
+        val thoughts = n("thoughtsTokenCount") ?: 0
+        return Usage(inT, (n("candidatesTokenCount") ?: 0) + thoughts, n("cachedContentTokenCount") ?: 0, thoughts)
     }
 }
 

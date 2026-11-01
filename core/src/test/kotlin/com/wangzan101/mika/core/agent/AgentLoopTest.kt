@@ -820,7 +820,7 @@ class AgentLoopTest {
     }
 
     @Test fun longTaskStaysUnderBudget() = runTest {
-        // 每次读屏约 6000 字;60 步,上下文 32000 token 时每次发出的估算不超过 60%
+        // 每次读屏约 6000 字;60 步,上下文 32000 token:每次发出的消息估算(乘还没校准时的比值)不超过可用窗口
         var n = 0
         val screen = object : ScreenPort by FakeScreen() {
             override suspend fun snapshot(): ScreenSnapshot {
@@ -838,7 +838,7 @@ class AgentLoopTest {
         val observation = m.requests[1][2].results().single().content
         assertTrue("observation should be about 6000+ chars, was ${observation.length}", observation.length >= 6000)
         val worst = m.requests.maxOf { TokenEstimate.of(it) }
-        assertTrue("sent about $worst tokens", worst <= 19_200)
+        assertTrue("sent about $worst tokens", worst * ContextCompressor.UNCALIBRATED_SCALE <= ContextLimits.of(32_000).usable)
         // 只裁旧读屏已经超出预算(压缩器只在超出时才折叠),折叠后回到预算内
         assertTrue(m.requests.last().any { msg -> msg.plainText().startsWith(ContextCompressor.HEADER) })
     }

@@ -1,6 +1,7 @@
 package com.wangzan101.mika.core.knowledge
 
 import com.wangzan101.mika.core.agent.KNOWLEDGE_BODY_LIMIT
+import com.wangzan101.mika.core.agent.TokenEstimate
 import com.wangzan101.mika.core.agent.KNOWLEDGE_TRUNCATED_HINT
 import com.wangzan101.mika.core.agent.clipKnowledge
 import org.junit.Assert.assertEquals
@@ -65,10 +66,11 @@ class BundledKnowledgeTest {
     }
 
     @Test fun longBodyTruncatedWithHint() {
-        val clipped = clipKnowledge("字".repeat(KNOWLEDGE_BODY_LIMIT + 500))
+        // 上限按 token:截后连同截断说明不超过上限,且几乎用满
+        val clipped = clipKnowledge("字".repeat(KNOWLEDGE_BODY_LIMIT * 2))
         assertTrue(clipped.startsWith("字".repeat(KNOWLEDGE_BODY_LIMIT)))
-        assertTrue(clipped.endsWith(KNOWLEDGE_TRUNCATED_HINT))
-        assertEquals(KNOWLEDGE_BODY_LIMIT + 1 + KNOWLEDGE_TRUNCATED_HINT.length, clipped.length)
+        assertTrue(clipped.endsWith("\n" + KNOWLEDGE_TRUNCATED_HINT))
+        assertTrue("${TokenEstimate.of(clipped)}", TokenEstimate.of(clipped) in KNOWLEDGE_BODY_LIMIT - 5..KNOWLEDGE_BODY_LIMIT)
         assertEquals("短", clipKnowledge("短"))
     }
 

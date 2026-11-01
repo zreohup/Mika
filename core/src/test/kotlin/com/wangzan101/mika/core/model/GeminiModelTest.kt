@@ -221,7 +221,8 @@ class GeminiModelTest {
 
     @Test fun outputTokensIncludeThoughts() = runTest {
         server.enqueue(ok("""{"candidates":[{"content":{"parts":[{"text":"x"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":10,"candidatesTokenCount":5,"thoughtsTokenCount":7}}"""))
-        assertEquals(Usage(10, 12, 0), model().complete("s", user, emptyList()).usage)
+        // 思考另记一份:不算上下文增长(见 UsageMeter)
+        assertEquals(Usage(10, 12, 0, reasoningTokens = 7), model().complete("s", user, emptyList()).usage)
     }
 
     @Test fun sanitizeKeepsPropertyNamesLikeKeywords() = runTest {

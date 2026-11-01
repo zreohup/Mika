@@ -1,5 +1,6 @@
 package com.wangzan101.mika.core.memory
 
+import com.wangzan101.mika.core.agent.TokenEstimate
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -28,7 +29,7 @@ class MemoryContextFullModeTest {
         val items = (1..120).map { mem("第${it}条$filler", keywords = listOf("外卖")) }
         val block = MemoryContext.build(items, goal = "点外卖", lastUserTurn = null, mode = MemoryContext.Mode.Auto)
         assertTrue(block.usedIds.size <= MemoryContext.MAX_PINNED + MemoryContext.MAX_RELEVANT)
-        block.message?.let { assertTrue(it.length <= MemoryContext.MAX_CHARS) }
+        block.message?.let { assertTrue(TokenEstimate.of(it) <= MemoryContext.MAX_TOKENS) }
     }
 
     @Test fun fullDropsOldestFactsBeforePinned() {
@@ -37,7 +38,7 @@ class MemoryContextFullModeTest {
         val facts = (1..80).map { mem("第${it}条$filler") }
         val block = MemoryContext.build(facts + pinned, goal = "随便", lastUserTurn = null, mode = MemoryContext.Mode.Full)
         assertTrue(pinned.id in block.usedIds)
-        assertTrue(block.message!!.length <= MemoryContext.FULL_MAX_CHARS)
+        assertTrue(TokenEstimate.of(block.message!!) <= MemoryContext.FULL_MAX_TOKENS)
         assertTrue(block.usedIds.size < facts.size)
     }
 

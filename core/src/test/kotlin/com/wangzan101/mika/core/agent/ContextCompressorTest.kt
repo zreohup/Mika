@@ -39,8 +39,8 @@ class ContextCompressorTest {
         assertEquals(0, c.foldedSteps)
     }
 
-    /** 刚越过触发点的上下文:压一次就能回到触发点的一半以下,用最轻的一级(留最近 12 次往返)。 */
-    private fun justOver(h: List<Message>) = (TokenEstimate.of(h) / ContextCompressor.COMPACT_AT).toInt() - 10
+    /** 触发点刚好低于整份请求的窗口:压一次就能回到目标以下,用最轻的一级(留最近 12 次往返)。 */
+    private fun justOver(h: List<Message>) = windowFor(uncalibrated(h)) - 1
 
     @Test fun foldsOldestKeepsRecent12() {
         val h = head + taps(40)
@@ -68,7 +68,8 @@ class ContextCompressorTest {
         assertEquals(folds, rewrites)
         assertTrue("$rewrites", rewrites.isNotEmpty() && rewrites.size <= 10)
         rewrites.zipWithNext().forEach { (a, b) -> assertTrue("$rewrites", b - a > 1) }
-        outs.forEach { assertTrue(TokenEstimate.of(it.messages) <= ctx * ContextCompressor.COMPACT_AT + 200) }
+        // 发出的整份请求始终在可用窗口(扣掉输出预留)以内
+        outs.forEach { assertTrue(uncalibrated(it.messages) <= ContextLimits.of(ctx).usable) }
     }
 
     @Test fun oversizedNewestResultIsShrunkToFitTheWindow() {
@@ -77,7 +78,7 @@ class ContextCompressorTest {
         val h = head + taps(3) + huge
         val ctx = 16_000
         val c = ContextCompressor(TOOLS).compress(h, contextTokens = ctx, fixedOverhead = 1000)
-        assertTrue("${TokenEstimate.of(c.messages)}", TokenEstimate.of(c.messages) <= ctx - 1000)
+        assertTrue("${uncalibrated(c.messages, 1000)}", uncalibrated(c.messages, 1000) <= ContextLimits.of(ctx).usable)
         val last = c.messages.last().parts.filterIsInstance<Part.ToolResult>().single()
         assertTrue(last.content, HistoryPruner.OMITTED_READ in last.content && "\"exitCode\":0" in last.content)
         val calls = c.messages.flatMap { m -> m.parts.filterIsInstance<Part.ToolCall>().map { it.id } }
@@ -88,13 +89,16 @@ class ContextCompressorTest {
     @Test fun overheadHeavySmallWindowNeverExceedsTheWindow() {
         val all = head + taps(40)
         val ctx = 4000
-        val overhead = 3000
+        val overhead = 1800
         val c = ContextCompressor(TOOLS)
-        // 固定开销已超过触发点:回差推迟的再压缩也不会越过上下文的九成,发出的始终放得下
+        // 固定开销几乎占满触发点:每次压缩后有回差,不会每步都压;发出的整份请求始终放得下
+        var rewrites = 0
         for (n in 1..40) {
-            val out = c.compress(all.take(head.size + 2 * n), contextTokens = ctx, fixedOverhead = overhead).messages
-            assertTrue("$n: ${TokenEstimate.of(out)}", TokenEstimate.of(out) <= ctx - overhead)
+            val out = c.compress(all.take(head.size + 2 * n), contextTokens = ctx, fixedOverhead = overhead)
+            if (out.rewritten) rewrites++
+            assertTrue("$n: ${uncalibrated(out.messages, overhead)}", uncalibrated(out.messages, overhead) <= ctx)
         }
+        assertTrue("$rewrites", rewrites in 1..20)
     }
 
     @Test fun foldedObservationsKeepScreenshotId() {
@@ -231,8 +235,7 @@ class ContextCompressorTest {
 
     @Test fun fixedOverheadCountsAgainstBudget() {
         val h = head + taps(20)
-        val size = TokenEstimate.of(h)
-        val context = (size / 0.6).toInt() + 10
+        val context = windowFor(uncalibrated(h))
         assertEquals(0, ContextCompressor(TOOLS).compress(h, context).foldedSteps)
         assertTrue(ContextCompressor(TOOLS).compress(h, context, fixedOverhead = 100).foldedSteps > 0)
     }

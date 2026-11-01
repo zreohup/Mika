@@ -55,7 +55,11 @@ enum class ContextKind(val wire: String, val layer: ContextLayer, val trust: Tru
     }
 }
 
-/** token 预算:[total] 管 L5+L2+L4 合计,[layers] 管各层;单份参考资料另有上限(正文 token)。技能索引整份给,不受预算裁剪(见 [ContextBuilder.start])。 */
+/**
+ * token 预算(按 [TokenEstimate]):[total] 管 L5+L2+L4 合计,[layers] 管各层;单份参考资料另有上限(正文 token)。
+ * 技能索引整份给,不受预算裁剪(见 [ContextBuilder.start])。按 token 计后各语言占的上下文一样多:
+ * 和原来按字数的额度比,英文能放的字多了约一倍,中文少了约三分之一;自带的 App/网站知识正文(APP.md、SITE.md)单份都在 [KNOWLEDGE_BODY_LIMIT] 以内。
+ */
 data class ContextBudget(
     val total: Int = 8_000,
     val layers: Map<ContextLayer, Int> = mapOf(ContextLayer.Task to 4_000, ContextLayer.Knowledge to 5_000),
@@ -172,7 +176,7 @@ class ContextBuilder(
 
     /**
      * 按优先级给额度:层按 L5 > L2 > L4,层内按 [RANK](标准先于记忆先于之前几轮);每份不超过本层上限和剩下的总额。
-     * 放不下的可截正文就截,截不出 [ContextBudget.minKeep] 字或不可截就不给;L5 与技能索引一律保留(L5 占掉的额度会挤掉后面的层)。
+     * 放不下的可截正文就截,截不出 [ContextBudget.minKeep] 个 token 或不可截就不给;L5 与技能索引一律保留(L5 占掉的额度会挤掉后面的层)。
      * 不进预算的层原样保留。结果按原顺序。
      */
     private fun fit(pieces: List<Piece>): List<Piece> {

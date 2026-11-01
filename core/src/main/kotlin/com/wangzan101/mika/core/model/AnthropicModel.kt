@@ -270,7 +270,7 @@ class AnthropicModel(
         fun n(k: String) = (u[k] as? JsonPrimitive)?.intOrNull
         val inT = n("input_tokens") ?: return null
         val cached = n("cache_read_input_tokens") ?: 0
-        // Anthropic 的 input_tokens 不含缓存部分;统一成总输入口径
+        // Anthropic 的 input_tokens 不含缓存部分;统一成总输入口径。output_tokens 含思考但不单独报,reasoningTokens 记 0
         return Usage(inT + cached + (n("cache_creation_input_tokens") ?: 0), n("output_tokens") ?: 0, cached)
     }
 }

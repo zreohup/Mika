@@ -55,8 +55,10 @@ internal class ModelCaller(
     /** 本任务里轻量模型给出、已进历史的回复;换模型时按它去掉别家模型的私有数据。 */
     private val lightReplies: MutableSet<Message> = java.util.Collections.newSetFromMap(java.util.IdentityHashMap())
 
-    /** 每个模型最近一次真实 usage(按消息身份);压缩改写前缀后清空。 */
-    private val anchors = java.util.IdentityHashMap<Message, Pair<ChatModel, Usage>>()
+    /** 带真实用量的回复(按消息身份)和给出它的模型,是量请求大小的锚点([UsageMeter]);压缩改写前缀后清空。 */
+    private val anchors = java.util.IdentityHashMap<Message, Pair<ChatModel, UsageMeter.Anchor>>()
+    /** 每个模型最近一次请求的固定开销估算;回复进历史时和用量一起记进锚点。 */
+    private val lastOverhead = java.util.IdentityHashMap<ChatModel, Int>()
 
     fun reset(prompt: String) {
         systemPrompt = prompt
@@ -65,17 +67,19 @@ internal class ModelCaller(
         compressors.values.forEach { it.forget() }
         lightReplies.clear()
         anchors.clear()
+        lastOverhead.clear()
     }
 
     /** 回复进了历史:是轻量模型给的就记下;有真实 usage 的记成上下文大小的锚点。 */
     fun noteReply(m: Message, used: ChatModel, usage: Usage?) {
         if (router?.isLight(used) == true) lightReplies += m
-        if (usage != null) anchors[m] = used to usage
+        val overhead = lastOverhead[used]
+        if (usage != null && overhead != null) anchors[m] = used to UsageMeter.Anchor(usage, overhead)
     }
 
-    /** 当前上下文大小:最近一条同一模型的真实 usage + 其后消息的粗估。 */
-    private fun contextTokensFor(messages: List<Message>, using: ChatModel): Int =
-        UsageMeter.of(messages) { m -> anchors[m]?.takeIf { it.first === using }?.second }
+    /** 发给 [using] 的整份请求有多大:最近一条它给的、带真实用量的回复作锚点,没有就全量估算(见 [UsageMeter])。 */
+    private fun requestTokens(messages: List<Message>, using: ChatModel, overhead: Int, scale: Double): Int =
+        UsageMeter.of(messages, overhead, scale) { m -> anchors[m]?.takeIf { it.first === using }?.second }
 
     /** 本任务里分工是否在起作用:开关打开、轻量模型能接手机步、没因不可恢复的错误停用。 */
     private val routing: Boolean get() = flags.lightSteps && router?.active == true
@@ -166,7 +170,7 @@ internal class ModelCaller(
         var overflowRetried = false
         while (true) {
             val current = ContextRecovery.ensure(history, compressor.current(history, contextTokens))
-            val currentTokens = contextTokensFor(current, using)
+            val currentTokens = requestTokens(current, using, overhead, compressor.scale)
             val raw = compressor.compress(history, contextTokens, currentTokens, compaction.aggressive, overhead, using.capabilities.maxImages)
             if (raw.rewritten) anchors.clear()
             val restored = ContextRecovery.ensure(history, raw.messages)
@@ -187,6 +191,7 @@ internal class ModelCaller(
                             .takeIf(String::isNotEmpty)?.let(onText)
                     }
                 return reply.also { r ->
+                    lastOverhead[using] = overhead
                     r.usage?.let { compressor.calibrate(sent.estimate + overhead, it.inputTokens) }
                 }
             } catch (e: ModelError.ContextTooLong) {
