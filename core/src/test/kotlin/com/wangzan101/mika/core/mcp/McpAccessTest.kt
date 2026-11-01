@@ -57,6 +57,15 @@ class McpAccessTest {
         assertEquals(RemoteAccess.Verdict.Pass, access.check(req(mapOf("Authorization" to "Bearer $TOKEN"))))
     }
 
+    @Test fun sharedRelaySourceThrottlesInvalidTokensWithoutLockingOutTheOwner() {
+        val relay = RemoteAccess({ TOKEN }, { now }, validTokensBypassLockout = true)
+        repeat(5) { assertEquals(401, status(relay.check(req(from = "0.0.0.0")))) }
+        assertEquals(429, status(relay.check(req(mapOf("Authorization" to "Bearer wrong"), from = "0.0.0.0"))))
+        assertEquals(RemoteAccess.Verdict.Pass, relay.check(req(mapOf("Authorization" to "Bearer $TOKEN"), from = "0.0.0.0")))
+        assertEquals(403, status(relay.check(req(mapOf("Authorization" to "Bearer $TOKEN", "Origin" to "https://example.test"), from = "0.0.0.0"))))
+        assertEquals(401, status(relay.check(req(from = "0.0.0.0"))))
+    }
+
     @Test fun failuresSpreadOutDoNotLock() {
         repeat(10) {
             assertEquals(401, status(access.check(req(mapOf("Authorization" to "Bearer guess")))))

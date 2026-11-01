@@ -117,6 +117,10 @@ curl -s http://192.168.1.23:8765/mcp \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"curl","version":"1"}}}'
 ```
 
+## 自托管远程连接
+
+公网远程连接可使用自托管网关：在「MCP → 远程」配对后显式开启访问，复制 HTTPS 配置到支持 Authorization 请求头的客户端。手机主动连接，不需要同一 Wi-Fi 或 VPN。CLI / Skill 也可选择远程，共用手机的局域网访问令牌，由手机鉴权；网关不管理访问令牌，不提供 OAuth 流程。首版为单用户、单设备，部署见[自托管远程 CLI / MCP](dev/remote-mcp.md)。网关终止 HTTPS，可读取转发内容，请使用可信网关。
+
 ## 工具
 
 | 工具 | 参数 | 做什么 |

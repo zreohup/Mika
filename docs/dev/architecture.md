@@ -11,6 +11,8 @@
 - `:core`:纯 Kotlin(JVM),不依赖安卓。主循环、工具、能力的平台无关部分、上下文、核查、记忆、知识、触发器、运行记录都在这里,可以在电脑上用单测和假模型跑。提示词、内置知识与技能是它的资源(`core/src/main/resources/`)。
 - `:app`:安卓宿主。界面、前台服务、虚拟屏、无障碍、内置手机助手、WebView、沙箱、文件存储,以及 `:core` 里各个接口的安卓实现。
 
+另有可选的独立 Go 网关 `tools/relay/`,用于单用户、单设备的公网远程 CLI / MCP。它不进入 APK,手机通过出站 WSS 接入;部署和手机鉴权见 [remote-mcp.md](remote-mcp.md)。
+
 ```
  来源   对话界面 │ 定时/条件触发 │ 父任务(子任务)│ 电脑(CLI / MCP)
           └──────────┬──────────┘
@@ -224,10 +226,14 @@
 - `RemoteTaskApi`(`core/remote/RemoteTaskApi.kt`):普通 HTTP/JSON 入口 `/api/v1`,提供版本、任务生命周期和只读设备状态,无需 MCP 握手或工具发现。业务错误映射为 HTTP 状态和 code/message;未知字段会被拒绝。详细契约见 [CLI 文档](../cli.md#http-契约)。
 - `McpRpc`(`core/mcp/McpRpc.kt`):Streamable HTTP 上的 JSON-RPC,只回单个 JSON、不开 SSE 流(规范允许),GET / DELETE 回 405,不发会话编号,服务端不发请求。两代协议都认:新一代(2026-07-28)每个请求在 `_meta` 里带版本和客户端能力,HTTP 头里的 `MCP-Protocol-Version`、`Mcp-Method`、`Mcp-Name` 要和正文一致(不一致 -32020),不认的版本回 -32022 并列出认的版本,支持 `server/discover`;老一代(2025-03-26 到 2025-11-25)先 `initialize` 握手,选双方都认的版本。工具参数不对、任务找不到是工具执行出错(`isError`),交回给对面的模型看;工具名不认得是协议错误。
 - `McpTaskTools`(`core/mcp/McpTaskTools.kt`):保留原有工具名、schema、MCP 提示文案与返回格式,把参数转为共用服务调用。`mika_run_task` / `mika_task_status` / `mika_wait_task` / `mika_answer` / `mika_cancel_task` / `mika_list_tasks` 均不另存任务状态。付款、确认和手机接管不能被普通回答放行。
-- `RemoteHost`(`core/remote/RemoteHost.kt`):组合入口,创建一份共用服务、一个认证实例和一个监听,把 `/api/v1` 交给普通 API、`/mcp` 交给 MCP。记最近客户端(地址加自报名字,十分钟内)和最后请求时间供设置页显示。`bindAddress` 选择所有网卡或 IPv4 回环 127.0.0.1,与 ADB 转发一致。
+- `RemoteEndpoints`(`core/remote/RemoteEndpoints.kt`):完成传输认证后的共用协议路由,持有 `RemoteTaskService`,把 `/api/v1` 交给普通 API、`/mcp` 交给 MCP,并记录近期活动。它不认证连接,由调用者先完成对应入口的认证。
+- `RemoteHost`(`core/remote/RemoteHost.kt`):局域网/USB 入口,持有 `RemoteAccess` 与 HTTP 监听,认证后交给共用路由。`bindAddress` 选择所有网卡或 IPv4 回环 127.0.0.1,与 ADB 转发一致。私有地址检查不因远程网关而放宽。
+- `RelayGateway` / `RelayClient`(`core/remote/`):HTTPS 配对与主动 WSS 通道,不跟随重定向,仅转发固定的 MCP POST。请求有独立编号、有界并发与正文,重复编号不执行,取消和断线中断等待;连接退避重建但操作不重放。网关已校验的用户授权不作为 USB 令牌透传,不伪造回环来源。隧道与本地入口共用协议路由,任务仍按现有远程来源处理。
 - `McpUsb`(`core/mcp/McpUsb.kt`):和电脑之间经 USB 的约定。连接信息 `mcp-usb.json` 新增普通 API 的 api_url / api_version,并保留原内容(Streamable HTTP 的地址、`Authorization` 头、令牌、端口、`adb forward` 命令、这次开机的编号 `boot`);电脑上跑的 「connect-computer.sh」:不是 shell(uid 2000)就不跑,先跑一次 「usb-start.sh」 起手机助手,再 `am start-foreground-service` 起 `McpService`(动作 `USB_ON`,带 `off` 参数时是 `USB_OFF`),等到 `boot` 和 `settings get global boot_count` 对得上的连接信息写好(认出不是上次开机留下的),把它打出来;关掉时等文件被删。脚本不带秘密。
 
 **App 一侧**:
+
+- 自托管远程方式:`RelaySettings`(`settings/RelaySettings.kt`)整份加密原子保存配对及开关,独立 Keystore 密钥;状态流只含非秘密字段。`McpRuntime` 将这一路与原有监听独立管理,远程开着时沿用 `McpService` 前台服务。通知的关闭动作同时关闭远程访问。配对本身不启用访问,关闭后保留配对,解除配对先关闭再到网关撤销。`RelaySection` 是 MCP 引导中的「远程」项,使用现有组件和中英繁体资源,不显示保存的令牌。
 
 - 局域网那种:开关、端口存在 `files/settings/mcp.json`,访问令牌(32 字节随机数)和服务商的 Key 一样经 `KeyCipher` 加密存在 `mcp-token.bin`(`settings/McpSettings.kt`),默认关。
 - USB 那种(`settings/McpUsbSettings.kt`):另一个开关、另一个令牌,存在 `files/settings/mcp-usb.json`(连同打开时的开机编号 `Settings.Global.BOOT_COUNT`)。打开时生成令牌,已开着再打开沿用;监听起来后把连接信息写到外部文件目录的 `mcp-usb.json`(安卓 11 起别的 App 读不到,shell 读得到;令牌本来就要明文交给电脑,所以私有目录里也存明文);没开起来就删掉。关掉时忘掉令牌(下次换新的)、删掉两个文件。不跨重启:开机编号变了就按关着算,顺手清掉上次的文件。
