@@ -143,6 +143,8 @@ data class Provider(
     val savedUntested: Boolean = false,
     /** 按模型名保留，用途切换后也能找回。 */
     val contextSettings: Map<String, ModelContextSettings> = emptyMap(),
+    /** 用户说的某个模型能不能看图(按模型名):比列表和预设初值都算数,见 [ModelOptions.seesImages]。 */
+    val visionOverrides: Map<String, Boolean> = emptyMap(),
 ) {
     val key: String get() = ProviderConnection.keyOf(kind, baseUrl, name)
 
@@ -450,8 +452,8 @@ class ProviderStore(
     }
 
     /**
-     * 定一个用途:用户选什么就是什么,不看能力标记。选具体模型时,主模型把工具调用、看图模型把看图标记记为 true
-     * (运行时按这两个标记决定发不发工具定义、附不附图)。之后没人用的配置删掉。
+     * 定一个用途:用户选什么就是什么,不看能力标记。选具体模型当主模型时把工具调用标记记为 true(运行时据此发工具定义);
+     * 看图标记不改存着的,在 [configFor] 里按当下的选择推出来,换走了就跟着回去。之后没人用的配置删掉。
      * 配置不存在、或这个用途不接受这种选择(见 [RoleChoices.with])时返回 false。
      */
     @Synchronized
@@ -461,11 +463,8 @@ class ProviderStore(
         if (choice is RoleChoice.Model) {
             _configs.value = _configs.value.map { c ->
                 if (c.id != choice.configId) c
-                else when (role) {
-                    ModelRole.Main -> c.copy(capabilities = c.capabilities.copy(toolCalls = true))
-                    ModelRole.Vision -> c.copy(capabilities = c.capabilities.copy(vision = true))
-                    ModelRole.Light -> c
-                }
+                else if (role == ModelRole.Main) c.copy(capabilities = c.capabilities.copy(toolCalls = true))
+                else c
             }
         }
         _roles.value = next
@@ -505,6 +504,15 @@ class ProviderStore(
         return true
     }
 
+    /** 记下用户说的 [model] 能不能看图(见 [Provider.visionOverrides]);服务商不存在时返回 false。 */
+    @Synchronized
+    fun setModelVision(providerId: String, model: String, sees: Boolean): Boolean {
+        val p = provider(providerId) ?: return false
+        _providers.value = _providers.value.map { if (it.id == p.id) p.copy(visionOverrides = p.visionOverrides + (model to sees)) else it }
+        writeConfig()
+        return true
+    }
+
     /** 看图模型的「看图定位已验证」(开发者选项里改);看图用主模型时改的是主模型那条配置。没有看图模型时不动。 */
     @Synchronized
     fun setVisionGroundingVerified(verified: Boolean) {
@@ -516,14 +524,16 @@ class ProviderStore(
     }
 
     /**
-     * 这个用途实际用的配置;没选、不用时为 null。看图「用主模型」时是主模型那条配置、看图标记为 true:
-     * 用户说了主模型能看图,截图就照发。这只影响看图这一路,主模型自己办事时仍按它存着的标记。
+     * 这个用途实际用的配置;没选、不用时为 null。看图标记按当下推出来,不看存着的列表数据有没有写:
+     * 看图这一路总是 true(用户选了它来看图);别的用途按 [ModelOptions.seesImages]——用户在这个模型上说过的为准,
+     * 没说过而看图也用这条配置(选了同一个模型,或「用主模型」)的,同样算能看,截图直接附给它,不必另调一次看图。
      */
     fun configFor(role: ModelRole): ProviderConfig? {
         val choices = _roles.value
         val cfg = choices.resolve(role)?.let { id -> _configs.value.firstOrNull { it.id == id } } ?: return null
-        val viaMain = role == ModelRole.Vision && choices.vision == RoleChoice.SameAsMain
-        return if (viaMain) cfg.copy(capabilities = cfg.capabilities.copy(vision = true)) else cfg
+        val sees = role == ModelRole.Vision || ModelOptions.seesImages(cfg.capabilities.vision,
+            provider(cfg.providerId)?.visionOverrides?.get(cfg.model), usedForVision = choices.resolve(ModelRole.Vision) == cfg.id)
+        return if (sees == cfg.capabilities.vision) cfg else cfg.copy(capabilities = cfg.capabilities.copy(vision = sees))
     }
 
     /** 主模型在它那家还没测试通过时给出那一家(见 [Provider.untested]);任务因模型失败时据此提示去「重新测试」。 */
@@ -890,6 +900,9 @@ class ProviderStore(
             val settings = ModelContextSettings(entry.positiveInt("windowTokens"), entry.positiveInt("triggerTokens"))
             if (settings == ModelContextSettings()) null else model to settings
         }.toMap(),
+        visionOverrides = (o["visionOverrides"] as? JsonObject).orEmpty().mapNotNull { (model, raw) ->
+            (raw as? JsonPrimitive)?.booleanOrNull?.let { model to it }
+        }.toMap(),
         typedModels = o["typedModels"]?.jsonArray?.map { it.jsonPrimitive.content }?.toSet().orEmpty(),
         // 旧版本存下的没有这一项:那时每一家都走过「测试并保存」,按测过算
         savedUntested = o["untested"]?.jsonPrimitive?.booleanOrNull ?: false,
@@ -972,6 +985,9 @@ class ProviderStore(
                                 settings.windowTokens?.let { put("windowTokens", it) }
                                 settings.triggerTokens?.let { put("triggerTokens", it) }
                             }
+                        }
+                        if (p.visionOverrides.isNotEmpty()) putJsonObject("visionOverrides") {
+                            for ((model, sees) in p.visionOverrides) put(model, sees)
                         }
                         if (p.typedModels.isNotEmpty()) putJsonArray("typedModels") { p.typedModels.forEach { add(it) } }
                         p.models?.let { models ->

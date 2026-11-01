@@ -47,6 +47,11 @@
     <string name="models_not_listed">還沒列出這家的模型。</string>
     <string name="refresh">重新整理</string>
     <string name="models_in_use">正在用這個</string>
+    <string name="models_sees_images">能看圖</string>
+    <string name="models_sees_note_user">按你的設定。主模型能看圖時，截圖直接給它看。</string>
+    <string name="models_sees_note_vision">已用作看圖模型，算能看圖。</string>
+    <string name="models_sees_note_listed">服務商的模型列表寫明的，可以改。</string>
+    <string name="models_sees_note_unconfirmed">未確認：模型列表沒寫。它能看圖就打開，截圖直接給它看，不必另呼叫一次看圖。</string>
     <string name="models_delete">刪除這個服務商</string>
     <string name="role_main">主模型</string>
     <string name="role_vision">看圖模型</string>
