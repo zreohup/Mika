@@ -81,6 +81,7 @@ object DiagnosticsCollector {
                 lastError = phone.shellManager.engine.lastError,
                 appCopies = appCopies(app, phone),
                 adbKey = adbKey(app),
+                appsAfterTask = com.wangzan101.mika.task.AppsAfterTaskEnd.lastLine,
             ),
             recovery = DiagnosticsSnapshot.Recovery(
                 consent = phone.recoverySettings.consent.value,

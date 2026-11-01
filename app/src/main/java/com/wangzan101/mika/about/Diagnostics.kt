@@ -62,6 +62,8 @@ data class DiagnosticsSnapshot(
         val appCopies: String? = null,
         /** 配对钥匙在这个进程里的状况(没用过、读回、新建、读不出及原因);读不到为 null。 */
         val adbKey: String? = null,
+        /** 这个进程里最近一次任务结束时 Mika 屏上的 App 留下、关掉了几个(只有个数,不列包名);还没有过为 null。 */
+        val appsAfterTask: String? = null,
     )
 
     data class Recovery(
@@ -212,6 +214,7 @@ object Diagnostics {
         line("last error", p.lastError?.takeIf { it.isNotBlank() }?.take(MAX_ERROR) ?: "none")
         line("adb key", p.adbKey ?: "unknown")
         line("app copies", p.appCopies ?: "unknown")
+        p.appsAfterTask?.let { line("apps after task", it) }
     }
 
     private fun StringBuilder.section(name: String) {

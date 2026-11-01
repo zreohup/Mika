@@ -432,6 +432,8 @@ class TaskRun(
         val resources = ResourceScope()
         var watcher: DeviceStateWatcher? = null
         var mute: AudioMute? = null
+        // 模型标下的任务结束时各 App 的去留(在手机端口上);收尾时交给内置助手
+        var afterTask: com.wangzan101.mika.core.uistate.AfterTaskMarks? = null
         var shellDeath: IBinder.DeathRecipient? = null
         var shellBinder: IBinder? = null
         var record: RunHandle? = null
@@ -547,6 +549,7 @@ class TaskRun(
                         withContext(Dispatchers.IO) { runCatching { AppCopyReader.read(s, launchableApps(service.packageManager, service.packageName)) }.getOrNull() }
                     }.orEmpty()
                 }) { connectPhone() }
+            afterTask = phoneScreen.afterTask
             // 挪回虚拟屏后等窗口出现,Agent 接下来读屏才读得到
             suspend fun moveTask(taskId: Int, to: Int): Boolean {
                 val p = phone ?: return false
@@ -853,7 +856,12 @@ class TaskRun(
             withContext(Dispatchers.IO + NonCancellable) {
                 // 前面哪步抛错,屏和网页显示也照放(按建的反序)
                 try {
+                    // 先定 Mika 屏上 App 的去留(留下的挪到主屏后面、正在出声的关掉)并释放屏,再还原静音:留下的不会突然出声
+                    val apps = phone?.takeIf { !shellDied }?.let { p ->
+                        p.display.current?.let { d -> AppsAfterTaskEnd.finish(p.shell, d.displayId, afterTask) }
+                    }
                     record?.let { r ->
+                        apps?.let { r.event(RunEvent.State(System.currentTimeMillis(), "apps_after_task", it.detail)) }
                         r.event(tally.event(System.currentTimeMillis()))
                         r.close()
                         if (BuildConfig.DEBUG) runStore?.mirrorToExternal(r.runId)

@@ -107,6 +107,11 @@ interface IMikaShell {
     // 该包(userId 那份)在主屏上有看得见的任务,即用户正在主屏用它;看不清主屏时返回 true
     boolean visibleOnMainScreen(String packageName, int userId) = 47;
 
+    // 任务结束:按规则处理这块屏上的 App(见 AppsAfterTask),再释放这块屏。留下的挪到主屏、排在最后面(不到用户眼前),
+    // 正在出声的和 close 里的随屏关掉。keep / close 是模型标过的键(包名,另一份为 包名@用户)。
+    // 返回 AppsAfterTask.KEY_* :kept=留下的键,closed=关掉的「键:原因」,note=挪不了时的一句原因(可为空)。不是 Mika 的屏为 null
+    Bundle finishDisplay(int displayId, in String[] keep, in String[] close) = 48;
+
     // 沿用早先定下的销毁事务号;AIDL 要求要么全部方法编号要么都不编号
     void destroy() = 16777114;
 }
