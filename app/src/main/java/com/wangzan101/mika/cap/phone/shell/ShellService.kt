@@ -40,6 +40,8 @@ import com.wangzan101.mika.core.uistate.AppCopies
 import com.wangzan101.mika.core.uistate.PressKeys
 import java.io.File
 import java.io.ByteArrayOutputStream
+import java.lang.reflect.Method
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import kotlin.system.exitProcess
@@ -105,19 +107,58 @@ class ShellService(
     }
 
     private fun createVirtualDisplay(surface: Surface, width: Int, height: Int, dpi: Int, trusted: Boolean): Int {
-        val vd = displayManager.createVirtualDisplay(
-            "mika-agent", width, height, dpi, surface, displayFlags(Build.VERSION.SDK_INT, trusted),
-        )
+        val flags = displayFlags(Build.VERSION.SDK_INT, trusted)
+        val vd = displayManager.createVirtualDisplay("mika-agent", width, height, dpi, surface, flags)
         val id = vd.display.displayId
         synchronized(displays) { displays[id] = vd }
         setImePolicy(id)
+        if (DisplayAwake.needed(flags, FLAG_OWN_DISPLAY_GROUP, displayGroup(id))) awake.start(id)
         return id
     }
+
+    /** 自成一组的虚拟屏一直不睡,见 [DisplayAwake]。 */
+    private val awake by lazy {
+        val timer = Executors.newSingleThreadScheduledExecutor { Thread(it, "mika-display-awake").apply { isDaemon = true } }
+        DisplayAwake(::pokeDisplay) { r ->
+            val f = timer.scheduleWithFixedDelay(r, 0, DisplayAwake.PERIOD_MS, TimeUnit.MILLISECONDS)
+            return@DisplayAwake { f.cancel(false) }
+        }
+    }
+
+    /** IPowerManager 和它按屏报用户操作的方法;拿不到为 null(只记一次,屏照常用,只是没人替它续亮)。 */
+    @get:SuppressLint("PrivateApi")
+    private val userActivity: Pair<Any, Method>? by lazy {
+        runCatching {
+            val binder = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java).invoke(null, "power")
+            val power = Class.forName("android.os.IPowerManager\$Stub").getMethod("asInterface", android.os.IBinder::class.java).invoke(null, binder)!!
+            power to (DisplayAwake.userActivityMethod(power.javaClass) ?: error("no per-display userActivity"))
+        }.onFailure { Log.w(TAG, "display keep-awake unavailable: ${it.message}") }.getOrNull()
+    }
+
+    private fun pokeDisplay(displayId: Int): Boolean {
+        val (power, method) = userActivity ?: return false
+        return try {
+            method.invoke(power, displayId, SystemClock.uptimeMillis(), DisplayAwake.EVENT_TOUCH, 0)
+            true
+        } catch (t: Throwable) {
+            Log.w(TAG, "userActivity failed, display keep-awake off", t)
+            false
+        }
+    }
+
+    /** 这块屏所在的显示组(DisplayInfo.displayGroupId,隐藏字段);读不到为 null。 */
+    @SuppressLint("PrivateApi")
+    private fun displayGroup(displayId: Int): Int? = runCatching {
+        val global = Class.forName("android.hardware.display.DisplayManagerGlobal").getMethod("getInstance").invoke(null)!!
+        val info = global.javaClass.getMethod("getDisplayInfo", Int::class.java).invoke(global, displayId)!!
+        info.javaClass.getField("displayGroupId").getInt(info)
+    }.getOrNull()
 
     /** 只往这个服务自己建的虚拟屏上启动,调用方传错屏号(比如主屏)也不会打扰用户。 */
     private fun ownDisplay(displayId: Int): Boolean = synchronized(displays) { displayId in displays }
 
     override fun releaseDisplay(displayId: Int) {
+        awake.stop(displayId)
         synchronized(displays) { displays.remove(displayId) }?.release()
     }
 
@@ -1266,6 +1307,7 @@ class ShellService(
         synchronized(muted) { muted.packages() }.forEach { key ->
             AppAudioKey.parse(key)?.let { (pkg, user) -> audioMuted(pkg, user, false) } ?: synchronized(muted) { muted.remove(key) }
         }
+        awake.stopAll()
         synchronized(displays) { displays.values.toList().also { displays.clear() } }.forEach { it.release() }
     }
 
