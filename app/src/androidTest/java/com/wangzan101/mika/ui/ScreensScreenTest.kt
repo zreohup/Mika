@@ -1,7 +1,9 @@
 package com.wangzan101.mika.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -15,7 +17,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** 「正在运行的虚拟屏」那一页:空态、一块屏一行、点开小画面(只用假数据,不建真屏)。 */
+/** 「后台屏」那一页:空态、一块屏一行、点开小画面(只用假数据,不建真屏)。 */
 @RunWith(AndroidJUnit4::class)
 class ScreensScreenTest {
     @get:Rule(order = Int.MIN_VALUE) val chinese = ChineseUi()
@@ -26,7 +28,7 @@ class ScreensScreenTest {
 
     private fun show(rows: List<ScreenRow>) = compose.setContent {
         MikaTheme {
-            ScreensContent(rows, onBack = { calls += "back" }, onOpenConversation = { calls += "open $it" }, onRefresh = { calls += "refresh" })
+            ScreensContent(rows, onBack = { calls += "back" }, onOpenConversation = { calls += "open $it" })
         }
     }
 
@@ -38,18 +40,15 @@ class ScreensScreenTest {
         compose.onNodeWithText(ScreensCopy.EMPTY).assertIsDisplayed()
     }
 
-    /** 一块屏一行:屏号、目标、状态都在;点那一行回到它所属的对话,右上角能重问前景 App。 */
-    @Test fun oneRowPerScreenOpensItsConversation() {
+    /** 一个任务一张卡:在做什么、在用哪个 App、状态都在;点那一行回到它所属的对话。 */
+    @Test fun oneCardPerTaskOpensItsConversation() {
         show(listOf(row(12), row(-1, "queued")))
-        compose.onNodeWithText(ScreensCopy.screen(12)).assertIsDisplayed()
-        compose.onNodeWithText(ScreensCopy.screen(-1)).assertIsDisplayed()
-        compose.onNodeWithText("打开设置看一下电池").assertExists()
-        compose.onNodeWithText("正在执行").assertExists()
-        compose.onNodeWithText("设置").assertExists()
-        compose.onNodeWithTag("screens-refresh").performClick()
-        assertEquals(listOf("refresh"), calls)
-        compose.onNodeWithText(ScreensCopy.screen(12)).performClick()
-        assertEquals(listOf("refresh", "open conv-k12"), calls)
+        compose.onNodeWithText("正在用设置").assertIsDisplayed()
+        compose.onNodeWithText("还没打开 App").assertIsDisplayed()
+        compose.onAllNodesWithText("打开设置看一下电池").assertCountEquals(2)
+        compose.onAllNodesWithText("正在执行").assertCountEquals(2)
+        compose.onNodeWithText("正在用设置").performClick()
+        assertEquals(listOf("open conv-k12"), calls)
     }
 
     /** 还没建屏的那块没有「看画面」:没有画面可看,不给一个点了没反应的入口。 */

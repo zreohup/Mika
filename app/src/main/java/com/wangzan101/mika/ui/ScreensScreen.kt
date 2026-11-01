@@ -2,16 +2,12 @@ package com.wangzan101.mika.ui
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.hardware.display.DisplayManager
-import android.util.DisplayMetrics
-import android.view.Display
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -49,11 +45,9 @@ import com.wangzan101.mika.confirm.ConfirmationNotifier
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.task.TaskCenterState
-import com.wangzan101.mika.ui.components.BarIconButton
 import com.wangzan101.mika.ui.components.EmptyNote
 import com.wangzan101.mika.ui.components.FooterNote
 import com.wangzan101.mika.ui.components.GroupCard
-import com.wangzan101.mika.ui.components.GroupLabel
 import com.wangzan101.mika.ui.components.ListRow
 import com.wangzan101.mika.ui.components.PageScaffold
 import com.wangzan101.mika.ui.components.RowValue
@@ -66,8 +60,9 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.withContext
 
 /**
- * 这一页列的一块虚拟屏:[displayId] 为 -1 是还没建屏(排队中,或者纯对话、还没打开过 App)。
- * [foreground] 是助手报表上最上面那个 App 的显示名;还没查到、或助手没连着时为 null。
+ * 这一页列的一个任务和它的虚拟屏:[displayId] 为 -1 是还没建屏(排队中,或者纯对话、还没打开过 App)。
+ * [foreground] 是那块屏最上面那个 App 的显示名;还没查到、或手机操作没连着时为 null。[web] 为 true 时在用内置浏览器。
+ * 屏号只用来排序和取画面,不给用户看。
  */
 data class ScreenRow(
     val key: String,
@@ -76,18 +71,21 @@ data class ScreenRow(
     val displayId: Int,
     val state: TaskState,
     val foreground: String? = null,
+    val web: Boolean = false,
+    /** 这个任务到此刻做过几件事;变了就重查一次最上面的 App。 */
+    val acted: Int = 0,
 )
 
-/** 列表的顺序:建了屏的按屏号在前,还没建屏的排在后面(保持原来的先后)。 */
+/** 列表的顺序:建了屏的在前(按建屏先后),还没建屏的排在后面(保持原来的先后)。 */
 fun orderedScreens(rows: List<ScreenRow>): List<ScreenRow> =
     rows.filter { it.displayId >= 0 }.sortedBy { it.displayId } + rows.filter { it.displayId < 0 }
 
 /**
- * 正在运行的虚拟屏:每个任务一块,列屏号、尺寸、前景 App、状态,能展开看实时画面。
- * 只读——停任务、挪 App 都在对话页和胶囊里做,这一页不重复那些入口。
+ * 侧栏「进行中」旁边进来的「后台屏」页:每个在跑的任务一张卡,写它在做什么、正在用哪个 App、状态,能展开看实时画面。
+ * 只读——停任务、回对话还是在对话页和胶囊里做;点卡片回到任务所在的对话。
  *
- * 数据取自各任务自己的流(屏号、状态、画面),不是服务对外的「显示中的任务」那一份:
- * 并行时没在显示的那几块屏照样是实的。
+ * 数据取自各任务自己的流(状态、屏、画面、做过的事),不是服务对外的「显示中的任务」那一份:
+ * 并行时没在显示的那几块屏照样是实的。最上面的 App 只在任务又做了一件事时重查,不轮询。
  */
 @Composable
 fun ScreensScreen(taskState: TaskCenterState, onBack: () -> Unit, onOpenConversation: (String) -> Unit) {
@@ -100,27 +98,29 @@ fun ScreensScreen(taskState: TaskCenterState, onBack: () -> Unit, onOpenConversa
             rows = emptyList()
             return@LaunchedEffect
         }
-        // 每个任务的状态和屏号各有自己的流:合起来,哪一块屏变了都跟着重排
-        combine(list.map { run -> combine(run.state, run.displayId) { s, id -> ScreenRow(run.key, run.conversationId, run.goal, id, s) } }) { it.toList() }
-            .collect { rows = it }
+        // 每个任务的状态、屏、浏览器、做过的事各有自己的流:合起来,哪一个变了都跟着重排
+        combine(list.map { run ->
+            combine(run.state, run.displayId, run.webOpen, run.activities) { s, id, web, acts ->
+                ScreenRow(run.key, run.conversationId, run.goal, id, s, web = web, acted = acts.size)
+            }
+        }) { it.toList() }.collect { rows = it }
     }
 
-    val ids = remember(rows) { rows.filter { it.displayId >= 0 }.map { it.displayId } }
+    // 有屏的任务和它们做过几件事:任何一个又做了一件事,才重问一次各块屏最上面的 App
+    val probe = remember(rows) { rows.filter { it.displayId >= 0 }.map { it.displayId to it.acted } }
     var foreground by remember { mutableStateOf<Map<Int, String>>(emptyMap()) }
-    var reload by remember { mutableStateOf(0L) }
-    LaunchedEffect(ids, reload) { foreground = foregroundOf(context, ids) }
+    LaunchedEffect(probe) { foreground = foregroundOf(context, probe.map { it.first }) }
 
     ScreensContent(
         rows = orderedScreens(rows).map { r -> r.copy(foreground = foreground[r.displayId]) },
         onBack = onBack,
         onOpenConversation = onOpenConversation,
-        onRefresh = { reload++ },
         frames = { key -> runs.firstOrNull { it.key == key }?.frames },
     )
 }
 
 /**
- * 不带状态的那一页,便于测试:[rows] 已经排好序、已经填好前景 App。
+ * 不带状态的那一页,便于测试:[rows] 已经排好序、已经填好最上面的 App。
  * [frames] 按任务编号给出那块屏的画面;给了才在展开时订阅。
  */
 @Composable
@@ -128,7 +128,6 @@ fun ScreensContent(
     rows: List<ScreenRow>,
     onBack: () -> Unit,
     onOpenConversation: (String) -> Unit,
-    onRefresh: () -> Unit = {},
     frames: (String) -> StateFlow<Bitmap?>? = { null },
 ) {
     PageScaffold(ScreensCopy.TITLE, onBack) {
@@ -136,29 +135,22 @@ fun ScreensContent(
             EmptyNote(ScreensCopy.EMPTY)
             return@PageScaffold
         }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            GroupLabel(ScreensCopy.GROUP, Modifier.weight(1f))
-            // 前景 App 是问一次记一次的:换了个 App 之后点它重问
-            BarIconButton(MikaIcons.Refresh, ScreensCopy.REFRESH, onRefresh, modifier = Modifier.testTag("screens-refresh"))
-        }
         rows.forEach { row -> ScreenCard(row, frames(row.key), onOpenConversation) }
         FooterNote(ScreensCopy.NOTE)
     }
 }
 
-/** 一块屏:屏号、目标、状态、尺寸、前景 App;点「看画面」展开这块屏的实时画面。 */
+/** 一个任务:在做什么、正在用哪个 App、状态;点这一行回到它的对话,点「看画面」展开实时画面。 */
 @Composable
 private fun ScreenCard(row: ScreenRow, frames: StateFlow<Bitmap?>?, onOpenConversation: (String) -> Unit) {
     val c = MikaTheme.colors
     var open by rememberSaveable(row.key) { mutableStateOf(false) }
-    GroupCard(Modifier.padding(top = 4.dp)) {
+    GroupCard(Modifier.padding(top = 8.dp)) {
         ListRow(
-            MikaIcons.Screens, ScreensCopy.screen(row.displayId), row.goal.oneLine(),
+            MikaIcons.Screens, row.goal.oneLine(), ScreensCopy.place(row),
             first = true, onClick = { onOpenConversation(row.conversationId) },
         ) { RowValue(ScreensCopy.state(row.state)) }
-        ListRow(null, ScreensCopy.SIZE) { RowValue(displaySize(LocalContext.current, row.displayId)) }
-        if (row.displayId >= 0) {
-            ListRow(null, ScreensCopy.FOREGROUND) { RowValue(row.foreground ?: ScreensCopy.UNKNOWN_APP) }
+        if (row.displayId >= 0 || row.web) {
             Text(
                 if (open) ScreensCopy.HIDE_PREVIEW else ScreensCopy.PREVIEW,
                 Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)
@@ -215,16 +207,6 @@ private fun FrameZoom(frame: Bitmap, onDismiss: () -> Unit) {
     }
 }
 
-/** 这块屏现在的像素尺寸;问不到(屏刚拆、系统不给看)时返回 null 的展示。 */
-private fun displaySize(context: Context, displayId: Int): String {
-    if (displayId < 0) return ScreensCopy.NO_SIZE
-    val m = DisplayMetrics()
-    val display: Display? = context.getSystemService(DisplayManager::class.java)?.getDisplay(displayId)
-    if (display == null) return ScreensCopy.NO_SIZE
-    runCatching { display.getRealMetrics(m) }
-    return if (m.widthPixels > 0) ScreensCopy.size(m.widthPixels, m.heightPixels, m.densityDpi) else ScreensCopy.NO_SIZE
-}
-
 /** 问内置助手每块屏最上面是哪个 App,再换成显示名。助手没连着就都不查(这只影响前景那一行)。 */
 private suspend fun foregroundOf(context: Context, ids: List<Int>): Map<Int, String> {
     if (ids.isEmpty()) return emptyMap()
@@ -244,27 +226,27 @@ private suspend fun foregroundOf(context: Context, ids: List<Int>): Map<Int, Str
 /** 目标在列表里只占一行:换行和连续空白并成一个空格。 */
 private fun String.oneLine(): String = replace(Regex("\\s+"), " ").trim()
 
-/** 页面上的全部文字。 */
+/** 页面上的全部文字:不写屏号、像素、密度这些开发用的东西,只说任务在做什么、在用什么、到哪一步了。 */
 object ScreensCopy {
     val TITLE: String get() = tr(R.string.screens_title)
-    val GROUP: String get() = tr(R.string.screens_group)
     val EMPTY: String get() = tr(R.string.screens_empty)
     val NOTE: String get() = tr(R.string.screens_note)
-    val REFRESH: String get() = tr(R.string.refresh)
-    val SIZE: String get() = tr(R.string.screens_size)
-    val FOREGROUND: String get() = tr(R.string.screens_foreground)
-    val UNKNOWN_APP: String get() = tr(R.string.screens_unknown_app)
-    val NO_SIZE: String get() = tr(R.string.screens_no_size)
     val PREVIEW: String get() = tr(R.string.screens_preview)
     val HIDE_PREVIEW: String get() = tr(R.string.screens_hide_preview)
 
-    fun screen(displayId: Int) = if (displayId < 0) tr(R.string.screens_no_display) else tr(R.string.screens_display, displayId)
-    fun size(width: Int, height: Int, dpi: Int) = tr(R.string.screens_size_value, width, height, dpi)
+    /** 卡片第二行:正在用哪个 App(或浏览器);还没打开 App、或暂时看不到时各有一句。 */
+    fun place(row: ScreenRow): String = when {
+        row.web -> tr(R.string.screens_using_browser)
+        row.displayId < 0 -> tr(R.string.screens_no_app)
+        row.foreground != null -> tr(R.string.screens_using_app, row.foreground)
+        else -> tr(R.string.screens_app_unknown)
+    }
 
     fun state(state: TaskState): String = when (state) {
         TaskState.Idle -> tr(R.string.screens_waiting)
         is TaskState.Running -> tr(R.string.task_running)
-        is TaskState.Held -> tr(R.string.screens_waiting)
+        // 只是等条件(锁屏、助手重连)的不算要你处理;要你在手机上动一下手的才算
+        is TaskState.Held -> if (state.reason.needsYou) tr(R.string.screens_needs_you) else tr(R.string.screens_waiting)
         is TaskState.WaitingTakeover, is TaskState.WaitingInput, is TaskState.WaitingConfirmation -> tr(R.string.screens_needs_you)
         is TaskState.Succeeded -> tr(R.string.task_done)
         is TaskState.Failed -> tr(R.string.task_not_done)

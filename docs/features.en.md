@@ -9,6 +9,7 @@ Tell Mika what you want in one sentence, and it gets it done on your phone. This
 Any app installed on your phone works, with no per-app integration: Mika looks at the screen, finds buttons, taps and types like a person would. If it can see it, it can operate it.
 
 - Opens apps on a separate background screen and reads, taps, types and scrolls there while you keep using your phone. A small live view in the chat shows what it is doing.
+- When several tasks run at once, “Background screens” next to “Running” in the side menu lists which app each task is using and how far it got; open one to watch its live screen, tap to enlarge it and pinch to zoom.
 - Reads long lists and chat histories screen by screen, e.g. "summarize what my group chat talked about today".
 - Works even with apps whose UI cannot be read directly (custom-drawn UI, unlabeled controls): Mika reads on-screen text with the text recognition bundled in the APK, and with a vision-capable model it can also find buttons and input fields from screenshots.
 - Can share a piece of text straight into an app (to send a message or save a note); Mika still picks the recipient and taps send on that page itself.

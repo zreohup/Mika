@@ -208,11 +208,10 @@ fun BarIconButton(
     glass: Boolean = false,
     enabled: Boolean = true,
     badge: Boolean = false,
-    modifier: Modifier = Modifier,
 ) {
     val c = MikaTheme.colors
     Box(
-        modifier.size(MikaSize.IconButton)
+        Modifier.size(MikaSize.IconButton)
             .then(if (glass) Modifier.floatShadow(c, CircleShape).background(c.surface, CircleShape) else Modifier)
             .clip(CircleShape)
             .clickable(enabled = enabled, onClickLabel = label, role = Role.Button, onClick = onClick),
