@@ -1,4 +1,9 @@
-"""Optional browser regression: with Playwright and Chrome installed, run this file directly."""
+"""Optional browser regression, outside the default test run (its name does not match test*.py).
+
+Run it directly after `pip install playwright && playwright install chromium`:
+    python3 tools/mika/tests/browser_desk_updates.py
+It skips when Playwright or its bundled Chromium is not installed.
+"""
 import copy
 from contextlib import contextmanager
 from pathlib import Path
@@ -6,27 +11,35 @@ import tempfile
 import threading
 import unittest
 
-from playwright.sync_api import expect, sync_playwright
+try:
+    from playwright.sync_api import Error as PlaywrightError, expect, sync_playwright
+except ImportError:
+    sync_playwright = None
 
 from test_mika_cli import api, DISCOVERY, SNAPSHOT, TOKEN
 from test_mika_desk import desk
 
 
 @contextmanager
-def browser_desk(respond):
+def browser_desk(respond, locale="zh-CN"):
     with tempfile.TemporaryDirectory() as directory, api(respond) as phone, sync_playwright() as pw:
         token = Path(directory) / "credential"
         token.write_text(TOKEN)
         with desk("--url", f"http://127.0.0.1:{phone.server_port}", "--token-file", str(token)) as url:
-            browser = pw.chromium.launch(channel="chrome")
             try:
-                page = browser.new_page()
+                browser = pw.chromium.launch()
+            except PlaywrightError as exc:
+                raise unittest.SkipTest(f"Playwright's Chromium is unavailable: {exc}")
+            try:
+                # The assertions read the Chinese strings; test_mika_desk checks both languages exist.
+                page = browser.new_page(locale=locale)
                 page.goto(url.geturl())
                 yield page, phone
             finally:
                 browser.close()
 
 
+@unittest.skipIf(sync_playwright is None, "Playwright is not installed")
 class DeskUpdatesTest(unittest.TestCase):
     def test_phone_changes_arrive_while_the_owner_is_typing(self):
         task = {**SNAPSHOT, "step": 1, "progress": "first step"}
@@ -81,6 +94,19 @@ class DeskUpdatesTest(unittest.TestCase):
             expect(page.locator("#tasks")).to_contain_text("new while idle", timeout=18000)
             writes = [path for method, path, _ in phone.calls if method == "POST" and not path.endswith("/wait")]
             self.assertEqual([], writes)
+
+    def test_english_browser_gets_english_text(self):
+        def respond(method, path, body):
+            if path == "/api/v1":
+                return 200, DISCOVERY, {}
+            if path.startswith("/api/v1/tasks?"):
+                return 200, {"tasks": [SNAPSHOT]}, {}
+            return 200, SNAPSHOT, {}
+
+        with browser_desk(respond, locale="en-US") as (page, _):
+            expect(page.locator("#status")).to_have_text("Running")
+            expect(page.locator("h1")).to_have_text("Task desk")
+            self.assertEqual("en", page.locator("html").get_attribute("lang"))
 
     def test_connection_disclosure_and_task_reading_order(self):
         available = True

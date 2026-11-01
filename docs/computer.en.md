@@ -37,10 +37,11 @@ Each connection has its own switch and token, and both can be on at once. The co
 - **MCP**: follow [Computer access (MCP)](mcp.en.md), which covers both USB and Wi-Fi / VPN step by step.
 - **Let an AI agent on your computer set it up**: with the phone connected over USB, give it [Install with an AI agent on your computer](install-with-agent.en.md). It installs Mika on the phone first; if you also want computer access, it then sets up the entry point you chose.
 
-## Task desk for the phone owner
+## Task desk (`mika ui`)
 
-After connecting the phone, run `mika ui` to open the local task desk (currently in Simplified Chinese). Submit a task and leave the desk open to follow its progress, answer questions and see the result. The visible page also picks up recent tasks from other clients. Updates pause in a hidden tab and resume when you return. Steps that require your intervention on the phone are marked in the desk. The list shows recent computer-initiated tasks. Old task IDs can expire when the Mika process restarts.
+If you would rather not type commands, connect the phone and run `mika ui`. Your browser opens a task desk where you can start tasks, follow their steps, answer questions, add instructions and cancel tasks; recent tasks started from other entry points show up too. Reads pause while the tab is hidden and resume when you come back; steps that need you still have to be handled on the phone. The desk follows the browser's language: Simplified Chinese or English.
 
-For multiple ADB devices, choose the phone in the desk or pass `mika ui --device SERIAL` when starting it. A private network connection uses the usual `--url` and `--token-file`. With only the Skill installed, run `python3 <skill-directory>/scripts/mika_cli.py ui`. To open the browser yourself, pass `--no-open` and use the private link printed in the terminal on this computer. Keep the link private because it grants control of the desk. Ctrl+C closes the desk and leaves submitted tasks on the phone.
-
-On macOS, run the service with `mika ui --port 18765 --no-open` to use a fixed address. Enter or bookmark `http://127.0.0.1:18765` in a local browser, including a new tab. The service binds to loopback and issues desk sessions only to connections owned by the current Mac user.
+- With several ADB devices, choose one in the page or start with `mika ui --device SERIAL`; Wi-Fi / private VPN connections use the usual `--url` and `--token-file`.
+- With only the Skill installed, run `python3 <skills-directory>/mika/scripts/mika_cli.py ui`.
+- If no browser opens, add `--no-open` and open the printed link in a browser on this computer.
+- The desk listens only on `127.0.0.1` on a random port and prints a new link on every start. The secret in the link is what grants access, so keep it to yourself. Ctrl+C in the terminal closes the desk; tasks already on the phone keep running.

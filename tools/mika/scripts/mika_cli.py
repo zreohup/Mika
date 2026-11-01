@@ -349,7 +349,6 @@ def parser():
                             ("devices", "List ADB devices")]:
         sub.add_parser(name, help=help_text, parents=[common])
     ui = sub.add_parser("ui", help="Open the phone owner's local task desk", parents=[common])
-    ui.add_argument("--port", type=bounded_int(1, 65535), help="Use a bookmarkable loopback address on this Mac")
     ui.add_argument("--no-open", action="store_true", help="Print the desk URL instead of opening a browser")
     task = sub.add_parser("task", help="Run and inspect phone tasks", parents=[common])
     actions = task.add_subparsers(dest="action", required=True)
@@ -388,7 +387,12 @@ def main(argv=None):
                 raise CliError("arguments", "Choose one ADB device or use --url with --token-file.")
             if args.url:
                 base_url(args.url)
-            from mika_desk import serve
+            try:
+                from mika_desk import serve
+            except ModuleNotFoundError:
+                # A copied Skill folder run as `python3 -I .../mika_cli.py` leaves this folder off sys.path.
+                sys.path.append(str(Path(__file__).resolve().parent))
+                from mika_desk import serve
             return serve(args)
         result = execute(args, secrets)
         if isinstance(result.get("status"), str) and result["status"] in {"failed", "cancelled"}:

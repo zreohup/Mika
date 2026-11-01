@@ -4,8 +4,8 @@ from contextlib import contextmanager
 import http.client
 import json
 import os
-import socket
 from pathlib import Path
+import re
 import subprocess
 import sys
 import tempfile
@@ -18,11 +18,12 @@ from test_mika_cli import api, DISCOVERY, SCRIPT, SNAPSHOT, TOKEN
 
 @contextmanager
 def desk(*args, env=None):
-    with subprocess.Popen([sys.executable, str(SCRIPT), "ui", "--no-open", *args], stdout=subprocess.PIPE,
+    # Isolated mode, as an agent may run the copied Skill script, must still find the desk files.
+    with subprocess.Popen([sys.executable, "-I", str(SCRIPT), "ui", "--no-open", *args], stdout=subprocess.PIPE,
                           stderr=subprocess.PIPE, text=True, env=env) as proc:
         try:
             url = urlsplit(proc.stdout.readline().strip())
-            if url.hostname != "127.0.0.1" or bool(url.fragment) == ("--port" in args):
+            if url.hostname != "127.0.0.1" or len(url.fragment) < 32:
                 raise AssertionError("Desk did not print a local session link")
             yield url
         finally:
@@ -69,7 +70,7 @@ class DeskTest(unittest.TestCase):
                 return 202, {"task_id": "t1", "accepted": True, "message_id": "s1"}, {}
 
         with api(respond) as phone, self.launch(phone) as url:
-            self.assertIn("电脑任务台", request(url, path="/")[1])
+            self.assertIn('data-i18n="heading"', request(url, path="/")[1])
             for path in ["/desk.css", "/desk.js"]:
                 self.assertEqual(200, request(url, path=path)[0])
             code, overview = request(url, {"action": "overview"})
@@ -119,41 +120,30 @@ class DeskTest(unittest.TestCase):
             self.assertEqual(403, request(url, path="/", headers={"Host": "other.invalid"})[0])
             self.assertEqual([], phone.calls)
 
-    @unittest.skipUnless(sys.platform == "darwin", "same-user fixed address is a macOS option")
-    def test_fixed_address_opens_without_fragment_and_still_requires_a_session(self):
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        with api() as phone, desk("--port", str(port), "--url", f"http://127.0.0.1:{phone.server_port}",
-                                  "--token-file", str(self.token)) as url:
-            self.assertEqual(port, url.port)
-            self.assertFalse(url.fragment)
-            self.assertIn("电脑任务台", request(url, path="/")[1])
-            for source in [{"Origin": "https://other.invalid"}, {"Host": "other.invalid"}]:
-                headers = {"X-Mika-Desk": "open", **source}
-                self.assertEqual(403, request(url, {}, path="/session", headers=headers)[0])
-            self.assertEqual(403, request(url, {"action": "run", "goal": "blocked"})[0])
-            self.assertEqual([], phone.calls)
-            code, session = request(url, {}, path="/session", headers={"X-Mika-Desk": "open"})
-            self.assertEqual(200, code)
-            code, task = request(url, {"action": "run", "goal": "once"}, headers={"X-Mika-Desk": session["session"]})
-            self.assertEqual(200, code)
-            self.assertEqual(SNAPSHOT, task)
-
-    def test_address_session_is_unavailable_to_other_socket_owners_or_private_link_mode(self):
-        with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
-            from mika_desk import owner_connection
-        client, server = ("127.0.0.1", 54321), ("127.0.0.1", 18765)
-        # Our own end of the socket is visible even when another account connected.
-        output = b"n127.0.0.1:18765->127.0.0.1:54321"
-        with patch("mika_desk.subprocess.run", return_value=Namespace(returncode=0, stdout=output)) as run:
-            with patch("mika_desk.os.getuid", return_value=501, create=True):
-                self.assertFalse(owner_connection(client, server))
-            self.assertIn("-u", run.call_args.args[0])
-            self.assertIn("501", run.call_args.args[0])
+    def test_session_comes_only_from_the_printed_link(self):
         with api() as phone, self.launch(phone) as url:
-            self.assertEqual(403, request(url, {}, path="/session", headers={"X-Mika-Desk": "open"})[0])
+            # No endpoint hands out the secret, and a guessed one is refused without contacting the phone.
+            for path in ["/session", "/desk"]:
+                self.assertEqual(403, request(url, {}, path=path, headers={"X-Mika-Desk": "open"})[0])
+            self.assertEqual(403, request(url, {"action": "overview"}, headers={"X-Mika-Desk": url.fragment[:-1]})[0])
             self.assertEqual([], phone.calls)
+        result = subprocess.run([sys.executable, str(SCRIPT), "ui", "--no-open", "--port", "18765"],
+                                capture_output=True, text=True, timeout=10)
+        self.assertEqual(2, result.returncode)
+
+    def test_every_text_has_chinese_and_english(self):
+        desk_dir = SCRIPT.parent / "mika_desk"
+        script = (desk_dir / "desk.js").read_text(encoding="utf-8")
+        table = script[script.index("const STRINGS = {"):script.index("\n};", script.index("const STRINGS = {"))]
+        strings = dict(re.findall(r'^  (\w+): \["([^"]+)", "[^"]+"\],$', table, re.M))
+        self.assertEqual(len(strings), table.count("\n  "), "every entry needs non-empty Chinese and English text")
+        used = set(re.findall(r'\bt\("(\w+)"', script))
+        used |= set(re.findall(r'data-i18n(?:-placeholder|-label)?="(\w+)"', (desk_dir / "index.html").read_text(encoding="utf-8")))
+        used |= set(re.findall(r'"(err[A-Z]\w*)"', script))
+        self.assertEqual(set(), used - strings.keys())
+        tones = script[script.index("const tones = {"):script.index("};", script.index("const tones = {"))]
+        self.assertEqual(set(), set(re.findall(r"(\w+):", tones)) - strings.keys())
+        self.assertIsNone(re.search(r"[\u4e00-\u9fff]", script.replace(table, "")), "Chinese text outside the table")
 
     def test_lost_write_is_not_retried_and_old_phones_cannot_steer(self):
         def respond(method, path, body):
@@ -173,7 +163,7 @@ class DeskTest(unittest.TestCase):
     def test_target_choice_is_limited_to_online_devices_and_stays_pinned(self):
         with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
             import mika_desk
-        args = Namespace(url=None, device=None, adb="adb", port=None)
+        args = Namespace(url=None, device=None, adb="adb")
         online = [{"device": "phone-a", "state": "device"}, {"device": "phone-b", "state": "device"},
                   {"device": "other", "state": "offline"}]
         with patch.dict(os.environ, {"ANDROID_SERIAL": ""}), mika_desk.Desk(args) as server:

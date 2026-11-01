@@ -7,7 +7,6 @@ import json
 import os
 import re
 import secrets
-import subprocess
 import sys
 import threading
 import webbrowser
@@ -38,24 +37,11 @@ def command(data):
     return action
 
 
-def owner_connection(client_address, server_address):
-    # Loopback is shared by all local accounts. Match the browser's end of this
-    # established connection, not our own (reverse) socket, before issuing a key.
-    client = "%s:%d" % client_address
-    server = "%s:%d" % server_address
-    try:
-        result = subprocess.run(["/usr/sbin/lsof", "-nP", "-a", "-u", str(os.getuid()),
-                                 "-iTCP@" + server, "-sTCP:ESTABLISHED", "-Fn"],
-                                capture_output=True, timeout=3)
-    except (OSError, subprocess.TimeoutExpired):
-        return False
-    return result.returncode == 0 and f"n{client}->{server}".encode() in result.stdout.splitlines()
-
-
 class Desk(ThreadingHTTPServer):
     def __init__(self, args):
-        self.fixed_address = args.port is not None
-        super().__init__(("127.0.0.1", args.port or 0), Handler)
+        # A fresh loopback port each run; the session secret only travels in the
+        # printed link's fragment, which browsers never send to the server.
+        super().__init__(("127.0.0.1", 0), Handler)
         self.args = args
         if not args.url and not args.device:
             args.device = os.environ.get("ANDROID_SERIAL")
@@ -147,11 +133,6 @@ class Handler(BaseHTTPRequestHandler):
         if self.headers.get("Host") != self.server.host or self.headers.get("Origin") != self.server.origin:
             return self.send(403, b"Invalid source")
         header = self.headers.get("X-Mika-Desk", "")
-        if self.path == "/session":
-            if not (self.server.fixed_address and header == "open"
-                    and owner_connection(self.client_address, self.server.server_address)):
-                return self.send(403, b"Browser session unavailable")
-            return self.send(200, json.dumps({"session": self.server.key}).encode(), "application/json")
         if not secrets.compare_digest(header.encode(), self.server.key.encode()):
             return self.send(403, b"Invalid desk session")
         if self.path != "/desk":
@@ -182,16 +163,13 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def serve(args):
-    if args.port is not None and sys.platform != "darwin":
-        print("Fixed-address owner access requires macOS. Use mika ui for a private session link.", file=sys.stderr)
-        return 2
     try:
         server = Desk(args)
     except OSError as exc:
         print(f"Could not start the local Mika desk: {exc}", file=sys.stderr)
         return 2
     with server:
-        link = server.origin + "/" if server.fixed_address else server.origin + "/#" + server.key
+        link = server.origin + "/#" + server.key
         if args.no_open or not webbrowser.open(link):
             print(link, flush=True)
         print("Mika task desk is open locally. Press Ctrl+C to close it.", file=sys.stderr, flush=True)
