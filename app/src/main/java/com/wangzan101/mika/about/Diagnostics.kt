@@ -236,7 +236,7 @@ object Diagnostics {
         line("attention channel", importance(p.attentionChannelImportance))
         line("Wi-Fi", when (p.wifiConnected) { true -> "connected"; false -> "not connected"; null -> "unknown" })
         line("last error", p.lastError?.takeIf { it.isNotBlank() }?.take(MAX_ERROR) ?: "none")
-        line("adb key", p.adbKey ?: "unknown")
+        line("adb key status", p.adbKey ?: "unknown")
         line("app copies", p.appCopies ?: "unknown")
         p.appsAfterTask?.let { line("apps after task", it) }
     }
