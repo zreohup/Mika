@@ -60,6 +60,8 @@ data class DiagnosticsSnapshot(
          * 助手没连着或问不到为 null。
          */
         val appCopies: String? = null,
+        /** 配对钥匙在这个进程里的状况(没用过、读回、新建、读不出及原因);读不到为 null。 */
+        val adbKey: String? = null,
     )
 
     data class Recovery(
@@ -208,6 +210,7 @@ object Diagnostics {
         line("attention channel", importance(p.attentionChannelImportance))
         line("Wi-Fi", when (p.wifiConnected) { true -> "connected"; false -> "not connected"; null -> "unknown" })
         line("last error", p.lastError?.takeIf { it.isNotBlank() }?.take(MAX_ERROR) ?: "none")
+        line("adb key", p.adbKey ?: "unknown")
         line("app copies", p.appCopies ?: "unknown")
     }
 

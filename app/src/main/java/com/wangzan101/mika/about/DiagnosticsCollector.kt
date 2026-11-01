@@ -14,6 +14,7 @@ import com.wangzan101.mika.cap.phone.PhoneServices
 import com.wangzan101.mika.cap.phone.a11y.AppCopyReader
 import com.wangzan101.mika.cap.phone.a11y.launchableApps
 import com.wangzan101.mika.cap.phone.shell.ShellService
+import com.wangzan101.mika.cap.phone.shell.adb.AndroidAdb
 import com.wangzan101.mika.cap.phone.setup.DeveloperSettings
 import com.wangzan101.mika.cap.phone.setup.PairingChannel
 import com.wangzan101.mika.cap.sandbox.SandboxState
@@ -79,6 +80,7 @@ object DiagnosticsCollector {
                 wifiConnected = wifi(app),
                 lastError = phone.shellManager.engine.lastError,
                 appCopies = appCopies(app, phone),
+                adbKey = adbKey(app),
             ),
             recovery = DiagnosticsSnapshot.Recovery(
                 consent = phone.recoverySettings.consent.value,
@@ -125,6 +127,12 @@ object DiagnosticsCollector {
 
     private fun channel(context: Context, id: String): Int? =
         runCatching { context.getSystemService(NotificationManager::class.java).getNotificationChannel(id)?.importance }.getOrNull()
+
+    /** 只看状况,不为了诊断去读钥匙。 */
+    private fun adbKey(context: Context): String? = runCatching {
+        val src = AndroidAdb.identities(context)
+        src.state.name + (src.problem?.let { " ($it)" } ?: "")
+    }.getOrNull()
 
     private fun wifi(context: Context): Boolean? = runCatching {
         val cm = context.getSystemService(ConnectivityManager::class.java)
