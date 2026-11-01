@@ -370,6 +370,12 @@ fun ChatScreen(
             bottomInset = composerHeight.toFloat(),
             onExpand = vm::expandPip,
             onCollapse = vm::collapsePip,
+            // 关掉小画面:这个任务结束前只剩右下角的小按钮;提示一句还能去哪看
+            onClose = {
+                vm.closePip()
+                Toast.makeText(context, context.getString(R.string.pip_closed_hint), Toast.LENGTH_SHORT).show()
+            },
+            onReopen = vm::reopenPip,
             // 要你处理时点小窗:收起,滚到要你处理的那张卡片(在最后一问一答里,它后面只可能还有文件卡片和去设置那一行)
             onAttention = {
                 vm.attendPip()

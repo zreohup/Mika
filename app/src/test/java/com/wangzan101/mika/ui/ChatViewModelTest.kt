@@ -81,11 +81,11 @@ class ChatViewModelTest {
         ChatViewModel(backgroundScope, state, stage, actions, store, appLabel = { if (it == "com.chat") "聊天" else it },
             activities = acts, steers = steerFlow).also { runCurrent() }
 
-    /** 和 [vm] 一样,但能指定「小画面开不开」和这块屏开没开。 */
-    private fun TestScope.vmWithPip(open: MutableStateFlow<Boolean>, allowed: Boolean) =
+    /** 和 [vm] 一样,但能指定这块屏开没开。 */
+    private fun TestScope.vmWithScreen(open: MutableStateFlow<Boolean>) =
         ChatViewModel(backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()),
             appLabel = { if (it == "com.chat") "聊天" else it }, activities = acts, steers = steerFlow,
-            screenOpen = open, pipAllowed = { allowed }).also { runCurrent() }
+            screenOpen = open).also { runCurrent() }
 
     private fun TestScope.emit(s: TaskState) {
         state.value = s
@@ -1817,27 +1817,68 @@ class ChatViewModelTest {
         assertEquals(listOf(joined) to emptyList<SteerNote>(), steersAroundDraft(listOf(joined)))
         assertEquals(emptyList<SteerNote>() to listOf(received), steersAroundDraft(listOf(received)))
     }
-    /** 设置 › 干活时 ›「用小画面显示虚拟屏」关掉之后:屏开了也不浮出来,任务照常在跑。 */
-    @Test fun smallWindowCanBeTurnedOff() = runTest {
+    /** 屏一开小画面就浮出来;用户关掉后只剩小按钮,任务照常在跑。 */
+    @Test fun smallWindowCanBeClosedForThisTask() = runTest {
         val open = MutableStateFlow(false)
-        val vm = vmWithPip(open, allowed = false)
+        val vm = vmWithScreen(open)
+        vm.send("打开设置看电量", ok)
+        emit(TaskState.Running(0, "正在准备"))
+        assertFalse("还没开屏时不浮出来", vm.ui.value.pip.visible)
+        open.value = true
+        runCurrent()
+        assertTrue(vm.ui.value.pip.visible)
+        assertFalse(vm.ui.value.pip.closed)
+
+        vm.closePip()
+        assertTrue("关掉后还有小按钮", vm.ui.value.pip.visible)
+        assertTrue(vm.ui.value.pip.closed)
+        assertEquals(ExchangeStatus.Working, vm.ui.value.exchanges.single().status)
+        // 之后的进展不让它自己再浮出来
+        emit(TaskState.Running(1, "点了设置"))
+        assertTrue(vm.ui.value.pip.closed)
+
+        vm.reopenPip()
+        assertFalse("点小按钮再打开", vm.ui.value.pip.closed)
+    }
+
+    /** 关着小画面时要你接管:不自己弹开,但小按钮进入「要你处理」的样子,要你做的事照样在对话卡片里。 */
+    @Test fun closedSmallWindowStillSignalsWhenItNeedsYou() = runTest {
+        val open = MutableStateFlow(false)
+        val vm = vmWithScreen(open)
+        vm.send("付款", ok)
+        emit(TaskState.Running(0, "正在准备"))
+        open.value = true
+        runCurrent()
+        vm.closePip()
+        emit(TaskState.WaitingTakeover("payment", "要你付款"))
+        val pip = vm.ui.value.pip
+        assertTrue(pip.visible)
+        assertTrue(pip.closed)
+        assertFalse("关着时接管也不弹开", pip.expanded)
+        assertEquals(PipMode.NeedsYou, pip.mode)
+        assertTrue(vm.ui.value.exchanges.single().status is ExchangeStatus.NeedsTakeover)
+    }
+
+    /** 关掉只管那一个任务:下一个任务照常浮出小画面。 */
+    @Test fun closingTheSmallWindowOnlyLastsForThatTask() = runTest {
+        val open = MutableStateFlow(false)
+        val vm = vmWithScreen(open)
         vm.send("打开设置看电量", ok)
         emit(TaskState.Running(0, "正在准备"))
         open.value = true
         runCurrent()
-        assertFalse("关掉之后不显示小画面", vm.ui.value.pip.visible)
-        assertEquals(ExchangeStatus.Working, vm.ui.value.exchanges.single().status)
-    }
+        vm.closePip()
+        emit(TaskState.Succeeded("电量 80%"))
+        open.value = false
+        advanceTimeBy(ChatViewModel.DONE_LINGER_MS + 1)
+        runCurrent()
 
-    /** 默认开着:屏一开就浮出来,和从前一样。 */
-    @Test fun smallWindowShowsByDefault() = runTest {
-        val open = MutableStateFlow(false)
-        val vm = vmWithPip(open, allowed = true)
-        vm.send("打开设置看电量", ok)
+        vm.send("再看看存储", ok)
         emit(TaskState.Running(0, "正在准备"))
         open.value = true
         runCurrent()
         assertTrue(vm.ui.value.pip.visible)
+        assertFalse(vm.ui.value.pip.closed)
     }
 
     // ---------- 胶囊接着哪个对话 ----------

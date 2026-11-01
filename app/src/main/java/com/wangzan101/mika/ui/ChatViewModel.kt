@@ -221,11 +221,16 @@ data class PendingAttachment(val uri: String, val name: String, val size: Long, 
 
 enum class PipMode { Running, NeedsYou, Done }
 
-/** 画中画只放画面:状态只靠边框光(绿色在干活、橙色呼吸要你处理),要你做的事在对话卡片里。 */
+/**
+ * 画中画只放画面:状态只靠边框光(绿色在干活、橙色呼吸要你处理),要你做的事在对话卡片里。
+ * [closed]:用户把这个任务的小画面关掉了,只剩右下角一个小按钮(点它再打开;要你处理时它变橙色)。
+ * 关掉只管这一个任务,下一个任务照常出小画面。
+ */
 data class PipUi(
     val visible: Boolean = false,
     val mode: PipMode = PipMode.Running,
     val expanded: Boolean = false,
+    val closed: Boolean = false,
 )
 
 enum class ComposerMode {
@@ -294,8 +299,6 @@ class ChatViewModel(
     private val endedRunIds: StateFlow<Map<String, String?>>? = null,
     /** 开关 parallelTasks:打开时不同对话的任务可以同时跑,界面只跟着屏上这个对话的任务。界面没在跟任务时重读。 */
     private val parallelFlag: () -> Boolean = { false },
-    /** 对话页上要不要显示「小画面」(画中画)。关掉之后屏还在,只是不浮在对话上。 */
-    private val pipAllowed: () -> Boolean = { true },
     /** 服务显示中的任务:(对话, 状态),两者一起写;并行时用它代替 [taskState],别的对话的状态不进来。 */
     private val shownTask: StateFlow<Pair<String, TaskState>?> = MutableStateFlow(null),
     /** 正在跑或排队的任务所在的对话。 */
@@ -357,7 +360,7 @@ class ChatViewModel(
      * 并行时切走的、任务还在跑的对话:那一问一答(原话、标准、步骤、文件)和开没开过屏都留着,
      * 后台按它自己任务的状态接着更新步骤,切回来原样接上。任务结束时丢掉(那一轮由服务存进对话)。
      */
-    private class Parked(val exchange: Exchange, val screenSeen: Boolean)
+    private class Parked(val exchange: Exchange, val screenSeen: Boolean, val pipClosed: Boolean = false)
     private val parked = mutableMapOf<String, Parked>()
     private val parkedJobs = mutableMapOf<String, Job>()
 
@@ -367,7 +370,7 @@ class ChatViewModel(
         val id = ui.conversationId ?: return
         val live = ui.exchanges.getOrNull(liveIndex) ?: return
         if (!live.status.active() || id !in activeConversations.value) return
-        parked[id] = Parked(live, screenSeen)
+        parked[id] = Parked(live, screenSeen, pipClosed)
         parkedJobs.remove(id)?.cancel()
         val flow = runState(id) ?: return
         parkedJobs[id] = scope.launch {
@@ -376,7 +379,7 @@ class ChatViewModel(
                     if (s != TaskState.Idle) { parked.remove(id); parkedJobs.remove(id)?.cancel() }
                     return@collect
                 }
-                parked[id]?.let { p -> parked[id] = Parked(reduce(p.exchange, s, appLabel, toolLabels::label), p.screenSeen) }
+                parked[id]?.let { p -> parked[id] = Parked(reduce(p.exchange, s, appLabel, toolLabels::label), p.screenSeen, p.pipClosed) }
             }
         }
     }
@@ -408,6 +411,8 @@ class ChatViewModel(
     private var pendingStart: Job? = null
     /** 正在跟踪的任务开过屏;一旦开过,到任务结束(含完成后停留的那几秒)都显示画中画。 */
     private var screenSeen = false
+    /** 用户把正在跟踪的这个任务的小画面关掉了(换任务时清掉,见 [PipUi.closed])。 */
+    private var pipClosed = false
 
     init {
         // 开关关着时也按状态带的对话认:别的对话的任务(悬浮胶囊、定时任务开始的)不接到屏上这个对话里
@@ -593,11 +598,14 @@ class ChatViewModel(
     }
 
     /**
-     * 小画面什么时候给:屏得开过,而且设置 › 干活时 ›「用小画面显示虚拟屏」开着。
-     * 关掉时其余字段照算,只是不浮出来——屏本身还在,去侧栏 ›「虚拟屏」看。
+     * 小画面什么时候给:屏得开过(其余字段照算,开屏那一刻直接用)。用户关掉了这个任务的小画面时只留小按钮,
+     * 也不再自动展开(接管开始时同样不弹开,要你处理的事在对话卡片里,小按钮变橙色)。
      */
-    private fun gated(p: PipUi) =
-        if (screenSeen && pipAllowed()) p else p.copy(visible = false, expanded = false)
+    private fun gated(p: PipUi) = when {
+        !screenSeen -> p.copy(visible = false, expanded = false, closed = false)
+        pipClosed -> p.copy(expanded = false, closed = true)
+        else -> p.copy(closed = false)
+    }
 
 
     /** 长按消息选了「引用」:引的内容放到输入框上方,随下一句话发出去(新任务、插话、回答都带)。空的不引。 */
@@ -672,6 +680,7 @@ class ChatViewModel(
         // 并行时那是别的对话的任务的屏,新任务还没有屏
         // 新消息开始时不能继承上一次运行的屏；真正建好本次的屏后由 screenOpen 打开小窗。
         screenSeen = false
+        pipClosed = false
         _ui.update {
             liveIndex = it.exchanges.size
             it.copy(
@@ -801,6 +810,7 @@ class ChatViewModel(
             // 那时这一问一答必须已经在,不然会另起一条没有原话的
             val live = p?.exchange ?: Exchange(runGoal(conversationId).orEmpty(), emptyList(), ExchangeStatus.Working, live = true, startedAt = clock())
             screenSeen = p?.screenSeen ?: false
+            pipClosed = p?.pipClosed ?: false
             _ui.update {
                 liveIndex = it.exchanges.size
                 it.copy(exchanges = it.exchanges + live, composer = ComposerMode.Busy, pip = gated(PipUi(visible = true)))
@@ -918,6 +928,19 @@ class ChatViewModel(
     fun attendPip() = collapsePip()
     fun collapsePip() = _ui.update { it.copy(pip = it.pip.copy(expanded = false)) }
 
+    /** 用户关掉这个任务的小画面:只留右下角的小按钮,这个任务结束前不再自己浮出来。 */
+    fun closePip() {
+        if (liveIndex < 0) return
+        pipClosed = true
+        _ui.update { it.copy(pip = gated(it.pip)) }
+    }
+
+    /** 点小按钮:把这个任务的小画面再打开。 */
+    fun reopenPip() {
+        pipClosed = false
+        _ui.update { it.copy(pip = gated(it.pip)) }
+    }
+
     /** 切到某个对话;任务在跑时不切。 */
     fun openConversation(id: String) {
         refreshParallel()
@@ -994,6 +1017,7 @@ class ChatViewModel(
         unpark(id)
         liveIndex = -1
         screenSeen = false
+        pipClosed = false
         val fresh = if (parallel()) store.newConversation() else null
         _ui.update { ChatUi(conversationId = fresh, takeoverStage = Takeover.Stage.None, attachEnabled = it.attachEnabled) }
         // 屏上换成了一个新的空对话:胶囊不再接着删掉的那个
@@ -1017,6 +1041,7 @@ class ChatViewModel(
             // 任务不是从这里开始的(比如界面重建前就在跑):接着显示,只是没有用户那句话
             if (!s.active()) return
             screenSeen = screenOpen.value
+            pipClosed = false
             _ui.update {
                 liveIndex = it.exchanges.size
                 // 原话、文件按对话取:这条状态属于屏上这个对话的任务
