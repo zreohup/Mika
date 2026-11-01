@@ -6,8 +6,10 @@ import com.wangzan101.mika.core.model.ChatModel
 import com.wangzan101.mika.core.model.ListFailure
 import com.wangzan101.mika.core.model.ListedModel
 import com.wangzan101.mika.core.model.Message
+import com.wangzan101.mika.core.model.ModelEndpoint
 import com.wangzan101.mika.core.model.ModelError
 import com.wangzan101.mika.core.model.ModelListResult
+import com.wangzan101.mika.core.model.ModelProtocol
 import com.wangzan101.mika.core.model.ModelReply
 import com.wangzan101.mika.core.model.ModelRole
 import com.wangzan101.mika.core.model.Part
@@ -220,6 +222,73 @@ class ModelSetupViewModelTest {
         assertEquals(
             "先试的 meituan/longcat-flash-lite 没测试通过：服务端出错（HTTP 502）。" +
                 "主模型用了测试通过的「deepseek/deepseek-v4.1-flash」。",
+            s.probeNote,
+        )
+    }
+
+    /**
+     * 列表写明了某个模型不走当前接口类型(如聚合服务把只支持 /messages 的模型排在前面):不试它,直接试下一个。
+     * 试了也必然失败,而每次失败要等满 PROBE_TIMEOUT_MS。
+     */
+    @Test fun modelOnAnotherProtocolIsSkippedWithoutProbing() = runTest {
+        val url = "https://api.commandcode.ai/provider/v1"
+        listing[url] = ModelListResult.Ok(listOf(
+            ListedModel("claude-sonnet-5-5", protocols = listOf(ModelProtocol.Messages)),
+            ListedModel("deepseek/deepseek-v4-flash", protocols = listOf(ModelProtocol.ChatCompletions, ModelProtocol.Responses)),
+        ))
+        reply = { ModelReply(listOf(Part.ToolCall("c1", "get_time", "{}")), StopReason.ToolUse, null) }
+        val store = store()
+        val vm = vm(store)
+        vm.selectPreset(ProviderPresets.custom.label); vm.setBaseUrl(url); vm.setApiKey("sk"); vm.testAndSave(); runCurrent()
+        assertEquals(listOf("deepseek/deepseek-v4-flash"), built.map { it.first })
+        val s = vm.state.value
+        assertFalse(s.showForm)
+        assertNull(s.probeNote)
+        assertEquals("deepseek/deepseek-v4-flash", store.configFor(ModelRole.Main)?.model)
+    }
+
+    /**
+     * 列表给某个模型单独指定了接口(见 [ListedModel.endpoint]):调用按它自己说的协议走,与这里选的接口类型无关,
+     * 不能因为 `supported_endpoints` 里没有当前接口类型就筛掉。
+     */
+    @Test fun modelWithItsOwnEndpointIsProbedWhateverTheKindIs() = runTest {
+        val url = "https://api.commandcode.ai/provider/v1"
+        listing[url] = ModelListResult.Ok(listOf(
+            ListedModel(
+                "claude-sonnet-5-5",
+                endpoint = ModelEndpoint(ModelProtocol.Messages, "https://api.commandcode.ai/provider/v1"),
+                protocols = listOf(ModelProtocol.Messages),
+            ),
+        ))
+        reply = { ModelReply(listOf(Part.ToolCall("c1", "get_time", "{}")), StopReason.ToolUse, null) }
+        val store = store()
+        val vm = vm(store)
+        vm.selectPreset(ProviderPresets.custom.label); vm.setBaseUrl(url); vm.setApiKey("sk"); vm.testAndSave(); runCurrent()
+        assertEquals(listOf("claude-sonnet-5-5"), built.map { it.first })
+        assertEquals("claude-sonnet-5-5", store.configFor(ModelRole.Main)?.model)
+    }
+
+    /** 列表里的模型全都写明不走当前接口类型:一个都不试,照旧存下服务商,并说清为什么。 */
+    @Test fun allModelsOnAnotherProtocolSaveWithAReason() = runTest {
+        val url = "https://api.commandcode.ai/provider/v1"
+        listing[url] = ModelListResult.Ok(listOf(
+            ListedModel("claude-sonnet-5-5", protocols = listOf(ModelProtocol.Messages)),
+            ListedModel("claude-sonnet-5", protocols = listOf(ModelProtocol.Messages)),
+        ))
+        reply = { throw AssertionError("不该试调用:这些模型不走 OpenAI 兼容") }
+        val store = store()
+        val vm = vm(store)
+        vm.selectPreset(ProviderPresets.custom.label); vm.setBaseUrl(url); vm.setApiKey("sk"); vm.testAndSave(); runCurrent()
+        assertTrue("不该试调用", built.isEmpty())
+        val p = store.providers.value.single()
+        val s = vm.state.value
+        assertFalse(s.showForm)
+        // 一个都没通过:服务商照旧存下、说清原因,并请用户自己从列表里选(可能要换个接口类型)。
+        // 这两个模型一次都没试,所以不能出现「试了 X、Y」那一行。
+        assertEquals(p.id, s.pickToProbe)
+        assertEquals(
+            "服务商已连上，但「claude-sonnet-5-5」没测试通过：它不走你选的接口类型，请求到不了它。" +
+                "从列表里选一个你开通了的模型。",
             s.probeNote,
         )
     }
