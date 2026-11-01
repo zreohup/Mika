@@ -222,10 +222,6 @@ class SystemSpeechSession(
         onNoResponse()
     }
 
-    init {
-        onMain { open(onDevice && attempts.firstOrNull() == null) }
-    }
-
     override fun release() = onMain {
         if (!holding || done()) return@onMain
         holding = false
@@ -401,6 +397,11 @@ class SystemSpeechSession(
                 is SystemSpeech.Outcome.Fail -> finish(SpeechEvent.Failed(o.why))
             }
         }
+    }
+
+    // 放在所有属性之后:onMain 在主线程上是当场执行,open 用到的 listener 等属性此时都已初始化
+    init {
+        onMain { open(onDevice && attempts.firstOrNull() == null) }
     }
 
     companion object {
