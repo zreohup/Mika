@@ -1158,6 +1158,26 @@ class ChatViewModelTest {
         assertEquals("r-a", vm.ui.value.exchanges.last().runId)
     }
 
+    // 跑的时候就挂上运行编号(「运行过程」当场能进),按卡片所在的对话取,不用服务显示中的那个
+    @Test fun runningCardUsesItsOwnConversationsLiveRunId() = runTest {
+        val live = mutableMapOf<String, String>()
+        val vm = ChatViewModel(
+            backgroundScope, state, stage, actions, ConversationStore(tmp.newFolder()), serviceBusy = MutableStateFlow(true),
+            endedRunIds = MutableStateFlow(mapOf("a" to "r-a")), liveRunId = { live[it] },
+            parallelFlag = { true }, shownTask = shown, activeConversations = active,
+        ).also { runCurrent() }
+        vm.switchTo("a")
+        assertTrue(vm.send("设置版本号", ok))
+        live["b"] = "r-b"
+        show("a", TaskState.Running(0, "正在准备"))
+        assertNull("这个对话的任务还没分到编号:不拿别的对话的", vm.ui.value.exchanges.last().runId)
+        live["a"] = "r-a"
+        show("a", TaskState.Running(1, "打开设置"))
+        assertEquals("r-a", vm.ui.value.exchanges.last().runId)
+        show("a", TaskState.Succeeded("12"))
+        assertEquals("r-a", vm.ui.value.exchanges.last().runId)
+    }
+
     // 开关在界面建好之后才打开:开始任务时重读,不用重建界面
     @Test fun parallelFlagReadWhenStarting() = runTest {
         var flag = false

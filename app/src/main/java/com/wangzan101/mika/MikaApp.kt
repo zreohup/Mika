@@ -258,8 +258,8 @@ class MikaApp : Application(), WebOwner, SandboxOwner, TaskEnvironment.Owner, Ph
             screenOpen = tasks.previewOpen
                 .stateIn(scope, SharingStarted.Eagerly, tasks.agentAppShown.value || tasks.webScreenOpen.value),
             endedRunId = taskState.endedRunId,
-            liveRunId = taskState._runId,
-            liveRunTimeline = { FeatureFlags.get(app).liveTimeline() },
+            // 按对话取它自己的任务,不用服务对外那一份(并行时那是显示中的别的任务)
+            liveRunId = { taskState.run(it)?.runId?.value },
             endedRunIds = taskState.endedRunIds,
             parallelFlag = { FeatureFlags.get(app).speedFlags().parallelTasks },
             shownTask = taskState.shownTask,

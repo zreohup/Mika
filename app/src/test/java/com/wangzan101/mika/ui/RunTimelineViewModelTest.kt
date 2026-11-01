@@ -39,16 +39,27 @@ class RunTimelineViewModelTest {
 
     private fun ready(runId: String) = RunTimelineViewModel(store, runId).load() as TimelineUi.Ready
 
-    /** 还没有结束事件时算「进行中」:页面据此每秒重读,跑完就停。 */
-    @Test fun anUnfinishedRunReadsAsRunning() {
+    /** 任务还在跑、还没有结束事件时算「进行中」:页面据此每秒重读,跑完就停。 */
+    @Test fun anUnfinishedRunOfALiveTaskReadsAsRunning() {
         val h = store.open("打开设置")
         store.append(h.runId, RunEvent.ModelReply(clock + 1_000, 1, "", null, null, 500, 10, 0, 900, repliedAtMs = clock + 1_000))
-        val live = RunTimelineViewModel(store, h.runId).load() as TimelineUi.Ready
+        val live = RunTimelineViewModel(store, h.runId, alive = { it == h.runId }).load() as TimelineUi.Ready
         assertTrue("没结束就算在跑", live.header.running)
         store.append(h.runId, RunEvent.TaskEnded(clock + 2_000, "succeeded", "好了"))
-        val done = RunTimelineViewModel(store, h.runId).load() as TimelineUi.Ready
+        val done = RunTimelineViewModel(store, h.runId, alive = { it == h.runId }).load() as TimelineUi.Ready
         assertFalse("结束之后不再重读", done.header.running)
     }
+
+    /** 没有结束记录、任务也已经不在了(进程被杀、记录没写完):算已结束,不一直按秒重读。 */
+    @Test fun anUnfinishedRunWhoseTaskIsGoneIsNotRunning() {
+        val h = store.open("打开设置")
+        store.append(h.runId, RunEvent.ModelReply(clock + 1_000, 1, "", null, null, 500, 10, 0, 900, repliedAtMs = clock + 1_000))
+        val gone = RunTimelineViewModel(store, h.runId, alive = { false }).load() as TimelineUi.Ready
+        assertFalse(gone.header.running)
+        val other = RunTimelineViewModel(store, h.runId, alive = { it == "another-run" }).load() as TimelineUi.Ready
+        assertFalse("别的任务在跑不算这一次", other.header.running)
+    }
+
     @Test fun usedMemoryAppearsInProcessHeader() {
         val id = run("总结") { event(RunEvent.MemoryUsed(clock, listOf("m1", "m2"))) }
         val ui = RunTimelineViewModel(store, id, resolveMemory = { ids -> ids.map { "记忆 $it" } }).load() as TimelineUi.Ready

@@ -84,6 +84,11 @@ class RunTimelineViewModel(
     private val store: RunStore, val runId: String,
     private val toolLabels: ToolLabels = ToolLabels(knownTools()),
     private val resolveMemory: (List<String>) -> List<String> = { emptyList() },
+    /**
+     * 这次运行的任务此刻还在跑。没有结束记录、任务也不在了(进程被杀、记录写到一半)的运行算已结束,
+     * 页面不为它一直按秒重读。
+     */
+    private val alive: (runId: String) -> Boolean = { false },
 ) {
     fun load(): TimelineUi {
         val summary = store.list().firstOrNull { it.id == runId }
@@ -99,8 +104,8 @@ class RunTimelineViewModel(
                 ?: events.filterIsInstance<RunEvent.Criteria>().lastOrNull()?.criteria.orEmpty(),
             outcome = outcomeLabel(summary?.outcome ?: ended?.outcome,
                 summary?.judged ?: events.filterIsInstance<RunEvent.OutcomeJudged>().lastOrNull()?.outcome),
-            // 结束事件或结束时间只要有一个,就算跑完了:界面据此停止按秒重读
-            running = ended == null && summary?.endedAtMs == null,
+            // 结束事件或结束时间只要有一个就算跑完了;都没有时还要任务真在跑,界面据此决定要不要按秒重读
+            running = ended == null && summary?.endedAtMs == null && alive(runId),
             verdict = verdictLabel(summary?.verdict ?: events.filterIsInstance<RunEvent.Verifier>().lastOrNull()?.verdict),
             duration = endMs?.let { duration(it - startMs) },
             modelCalls = events.count { it is RunEvent.ModelReply },

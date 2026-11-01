@@ -396,7 +396,10 @@ private fun MikaRoot(store: ProviderStore, monitor: SystemStatusMonitor, activit
         }
         Route.Run -> {
             val id = runId
-            val vm = remember(id) { id?.let { RunTimelineViewModel(RunStore(context), it, resolveMemory = app.chat::usedMemoryTexts) } }
+            val vm = remember(id) { id?.let { RunTimelineViewModel(
+                    RunStore(context), it, resolveMemory = app.chat::usedMemoryTexts,
+                    alive = { run -> app.taskState.runs.value.any { r -> r.runId.value == run } },
+                ) } }
             if (vm != null) RunTimelineScreen(vm, back) else LaunchedEffect(Unit) { nav.back() }
         }
         Route.Source -> {

@@ -659,7 +659,7 @@ private fun WorkBlock(ex: Exchange, reduceMotion: Boolean, backgroundNote: Boole
             if (elapsed != null) Text(ChatCopy.clock(elapsed), style = ClockText, color = c.ink3)
         }
         if (ex.steps.isNotEmpty()) StepLine(ex.steps, ex.stepActions, live = true, paused = paused)
-        // 设置 › 干活时 ›「干活时也能查看过程」开着时,跑的时候就有这一项(不然只有结束之后才有)
+        // 跑的时候就能进运行过程(页面按秒接着长);结束后收进「做了 N 步 · 查看过程」那一行
         ex.runId?.let { id ->
             Text(
                 stringResource(R.string.chat_view_process),
