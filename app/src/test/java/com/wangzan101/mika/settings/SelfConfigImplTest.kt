@@ -8,7 +8,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** mika_config 的白名单:只给能随手改回去的偏好;模型、Key、删数据一律不在其中。 */
+/** settings_list / settings_set 的白名单:只给能随手改回去的偏好;模型、Key、删数据一律不在其中。 */
 class SelfConfigImplTest {
     private fun flags() = FeatureFlags(FeatureFlagsCapsuleTest.MemoryPrefs())
 

@@ -69,7 +69,7 @@ class FeatureFlags(private val prefs: SharedPreferences) {
 
     /**
      * 允许 Mika 改自己的设置(见 core 的 SelfConfig):模型与 Key、删数据不在允许之列。
-     * 默认关;开着的时候任务里才有 mika_config 这件工具。
+     * 默认关;开着的时候任务里才有 settings_list、settings_set 这两件工具。
      */
     fun selfConfig(): Boolean = prefs.getBoolean(SELF_CONFIG, false)
 

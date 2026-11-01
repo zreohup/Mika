@@ -204,7 +204,7 @@ fun DuringWorkScreen(
             }
             parallel?.let { ParallelRow(it, onParallelMax) }
         }
-        // 允许 Mika 改自己的设置:默认关,打开后任务里才有 mika_config
+        // 允许 Mika 改自己的设置:默认关,打开后任务里才有 settings_list、settings_set
         GroupCard {
             ListRow(
                 MikaIcons.Spark, stringResource(R.string.settings_self_config),
