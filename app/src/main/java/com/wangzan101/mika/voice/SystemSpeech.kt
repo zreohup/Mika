@@ -327,7 +327,7 @@ class SystemSpeechSession(
         restartPending = false
         val rec = recognizer
         recognizer = null
-        // 先摘掉再 destroy:有的系统在 destroy 里同步再回调 onError,这时不能再换引擎,否则第一次失败会嵌套卡死
+        // 先摘掉再 destroy:destroy 里可能同步回调 onError,这时不能再换引擎,否则会在失败处理里嵌套重开
         usingOnDevice = false
         rec?.let { runCatching { it.destroy() } }
     }
