@@ -60,8 +60,18 @@ class FeatureFlags(private val prefs: SharedPreferences) {
         prefs.edit().putString(OPERATING_PACE, pace.name).commit()
     }
 
-    /** 界面配色:跟随系统、一直浅色、一直深色(见 [ThemeMode])。改了要重建界面才生效。 */
+    /** 界面配色:跟随系统、一直浅色、一直深色(见 [ThemeMode])。界面跟着 [themeModeChanges] 当场换,不用重建。 */
     fun themeMode(): ThemeMode = ThemeMode.parse(prefs.getString(THEME_MODE, null))
+
+    /** 外观的当前值,之后每次改动再发一次(设置页改的、任务里改的都一样)。 */
+    fun themeModeChanges(): Flow<ThemeMode> = callbackFlow {
+        val listener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == null || key == THEME_MODE) trySend(themeMode())
+        }
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        send(themeMode())
+        awaitClose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    }.distinctUntilChanged()
 
     fun setThemeMode(mode: ThemeMode) {
         prefs.edit().putString(THEME_MODE, mode.name).commit()

@@ -60,9 +60,8 @@ import com.wangzan101.mika.cap.phone.setup.PairingNotifier
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.ui.theme.animationsOff
-import androidx.compose.foundation.isSystemInDarkTheme
-import com.wangzan101.mika.settings.FeatureFlags
-import com.wangzan101.mika.settings.ThemeMode
+import com.wangzan101.mika.ui.theme.appearanceDark
+import com.wangzan101.mika.ui.theme.systemBarsFor
 
 class MainActivity : ComponentActivity() {
     private lateinit var monitor: SystemStatusMonitor
@@ -86,12 +85,9 @@ class MainActivity : ComponentActivity() {
         monitor = SystemStatusMonitor(this, PhoneServices.of(this).shellControl)
         val store = ProviderStore.get(this)
         setContent {
-            // 跟随系统时用系统给的深浅,其余两种照设置的来;改设置会重建界面,这里读一次就够
-            val dark = when (FeatureFlags.get(this@MainActivity).themeMode()) {
-                ThemeMode.System -> isSystemInDarkTheme()
-                ThemeMode.Light -> false
-                ThemeMode.Dark -> true
-            }
+            // 外观按设置来,改了当场换;系统栏图标的深浅跟着界面
+            val dark = appearanceDark()
+            LaunchedEffect(dark) { systemBarsFor(dark) }
             MikaTheme(dark = dark, reduceMotion = animationsOff(this)) {
                 // 在输入框外面点一下或拖动就收起键盘,全 App 统一
                 KeyboardDismissArea(Modifier.fillMaxSize()) {

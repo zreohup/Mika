@@ -99,6 +99,7 @@
     <string name="sandbox_usage_clear_all_body">每个对话工作区里的文件都会被删掉：附件、屏幕截图和任务写的文件。对话都还在。有任务在跑的对话不清。</string>
     <string name="sandbox_usage_note">运行环境和技能随 App 自带，不在这里清理；要从头准备，用上面的「重置运行环境」。</string>
     <string name="appearance_title">语言与外观</string>
+    <string name="appearance_group">外观</string>
     <string name="appearance_system">跟随系统</string>
     <string name="appearance_system_detail">手机是浅色就浅色，深色就深色</string>
     <string name="appearance_light">一直浅色</string>

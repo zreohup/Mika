@@ -15,6 +15,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import com.wangzan101.mika.i18n.AppLanguage
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -313,21 +314,19 @@ fun CapsuleScreen(mode: CapsuleMode, onMode: (CapsuleMode) -> Unit, onBack: () -
 fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onBack: () -> Unit) {
     val context = LocalContext.current
     val flags = remember { FeatureFlags.get(context) }
-    var themeMode by remember { mutableStateOf(flags.themeMode()) }
+    // 跟着设置走:任务里改了外观,这页也对得上
+    val themeMode by remember(flags) { flags.themeModeChanges() }.collectAsState(flags.themeMode())
     PageScaffold(stringResource(R.string.appearance_title), onBack) {
         // 语言和外观放在同一页:都是「界面长什么样」
-        GroupLabel(stringResource(R.string.appearance_title))
+        GroupLabel(stringResource(R.string.appearance_group))
         GroupCard {
             ThemeMode.entries.forEachIndexed { idx, m ->
                 RadioRow(
                     appearanceLabel(m), selected = m == themeMode, first = idx == 0,
                     subtitle = if (m == ThemeMode.System) stringResource(R.string.appearance_system_detail) else null,
                     onClick = {
-                        if (m != themeMode) {
-                            flags.setThemeMode(m); themeMode = m
-                            // 深浅是整棵界面的颜色,重建一次最稳
-                            (context as? android.app.Activity)?.recreate()
-                        }
+                        // 界面跟着设置当场换颜色,不重建,页面和滚动位置都不丢
+                        if (m != themeMode) flags.setThemeMode(m)
                     },
                 )
             }
