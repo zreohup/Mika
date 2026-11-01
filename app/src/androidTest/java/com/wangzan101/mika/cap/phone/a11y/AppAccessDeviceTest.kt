@@ -41,7 +41,7 @@ class AppAccessDeviceTest {
 
     /**
      * 从没设置过的应用默认允许:能打开、能读屏。任务进行中把它设为禁用,下一次读屏立刻被拒;
-     * 再允许后又能读 —— 权限每次都读最新状态,不用重启任务。
+     * 再允许后又能读 —— 权限每次都读最新状态,不用重启任务;沿用核对结果时名单一变也不再沿用。
      */
     @Test fun blockingWhileRunningStopsTheNextRead() = runBlocking {
         val app = InstrumentationRegistry.getInstrumentation().targetContext.applicationContext as MikaApp
@@ -53,7 +53,8 @@ class AppAccessDeviceTest {
         try {
             val native = AndroidScreen(DeviceSupport.service(), shell, DeviceSupport.ready(display), appAccess = app.appAccess)
             val screen = com.wangzan101.mika.core.uistate.AppAccessScreenPort(native, app.appAccess,
-                packages = native::accessPackages, protectedUi = { app.appAccess.sensitiveUi }, ownPackage = app.packageName)
+                packages = native::accessPackages, protectedUi = { app.appAccess.sensitiveUi }, ownPackage = app.packageName,
+                windowToken = { ScreenAccessibility.windowGeneration() })
             app.appAccess.setBlocked(pkg, false)
             app.appAccess.setShareAllowed(pkg, false)
             assertNull("a package nobody configured must be allowed", app.appAccess.current().denial(pkg))
@@ -64,7 +65,9 @@ class AppAccessDeviceTest {
             app.appAccess.setBlocked(pkg, true)
             try { screen.checkScreen(); fail("Blocked app must not be read mid-task") }
             catch (e: AppAccessDenied) { assertEquals("app_blocked", e.code) }
-
+            // 读屏用这一屏自带的窗口归属核对:同样被拒
+            try { screen.snapshot(); fail("Blocked app must not be read mid-task") }
+            catch (e: AppAccessDenied) { assertEquals("app_blocked", e.code) }
 
             app.appAccess.setBlocked(pkg, false)
             screen.checkScreen()

@@ -143,12 +143,15 @@ class AndroidScreen(
     private val settingsPackage: String? by lazy { SystemPickers.settingsPackage(a11y.packageManager) }
 
     private fun windows() = a11y.windowsOn(displayId)
-    /** 空列表表示尚无应用;null 表示已建屏但暂时无法确认归属。 */
+    /**
+     * 应用访问的窗口探针:屏上各 App 窗口的归属,只读根节点的包名、不读内容。读不到根节点的那一项为 null(归属未知);
+     * 没有 App 窗口时是最上面任务的 App,也没有就是空屏(空列表)。规则和读屏结果里的窗口归属一致。
+     */
     suspend fun accessPackages(): List<String?> = withContext(Dispatchers.IO) {
         if (!hasDisplay) return@withContext emptyList()
         val packages = windows().filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }
             .map { it.root?.packageName?.toString() }
-        if (packages.isEmpty()) listOf(foregroundTaskPackage()) else packages
+        packages.ifEmpty { listOfNotNull(foregroundTaskPackage()) }
     }
 
     private fun read() = ScreenReader.read(windows(), display.width, display.height)
@@ -648,7 +651,6 @@ class AndroidScreen(
 
     /** [openApp] / [openAppCopy] 的共同部分;[user] 为空是本来那份。 */
     private suspend fun open(packageName: String, user: Int?, cold: Boolean): ActionResult = withContext(Dispatchers.IO) {
-        appAccess.current().denial(packageName)?.let { throw it }
         // 同一个 App 不能同时在两块屏上:系统会把整个任务挪过来,等于从另一个任务手里抢走它。装了两份的,两份各算各的
         if (checkOtherTasks) {
             val other = runCatching { if (user == null) shell.displayOfPackage(packageName) else shell.displayOfPackageInUser(packageName, user) }.getOrDefault(-1)
@@ -687,7 +689,6 @@ class AndroidScreen(
      * 认系统问打开哪一个。这个 App 不收文字分享为 cannot_share。只打开分享页,发不发由模型在那一页上点。
      */
     override suspend fun shareText(packageName: String, text: String): ActionResult = withContext(Dispatchers.IO) {
-        appAccess.current().denial(packageName)?.let { throw it }
         if (checkOtherTasks) {
             val other = runCatching { shell.displayOfPackage(packageName) }.getOrDefault(-1)
             if (other >= 0 && other != display.current?.displayId) return@withContext IN_USE_BY_OTHER
@@ -843,29 +844,17 @@ class AndroidScreen(
      * 设置页预期落在系统设置所在的包,指定了 App 的落在那个 App;落到别处(系统选择器、跳转页)照样成功,带提示。
      */
     override suspend fun openLink(action: String?, uri: String?, packageName: String?): ActionResult = withContext(Dispatchers.IO) {
-        val view = android.content.Intent(action ?: android.content.Intent.ACTION_VIEW).apply {
-            uri?.let { data = android.net.Uri.parse(it) }
-            packageName?.let { setPackage(it) }
-            addCategory(android.content.Intent.CATEGORY_DEFAULT)
-        }
-        val candidates = a11y.packageManager.queryIntentActivities(view, PackageManager.MATCH_DEFAULT_ONLY)
-            .map { it.activityInfo.packageName }.distinct()
-        val selected = packageName ?: candidates.firstOrNull { appAccess.current().denial(it) == null }
-        if (candidates.isEmpty() && packageName == null) return@withContext ActionResult.Failed("link_unresolved")
-        if (selected == null) {
-            candidates.firstOrNull()?.let { appAccess.current().denial(it)?.let { denied -> throw denied } }
-            throw com.wangzan101.mika.core.access.AppAccessDenied("app_access_unverified", null)
-        }
-        appAccess.current().denial(selected)?.let { throw it }
+        // 指定了 App 的由应用访问边界看过;没指定的,名单非空时在这里挑一个没被禁用的接手
+        val pinned = packageName ?: allowedLinkHandler(action, uri)
         val id = display.get().displayId
-        val expected = selected
+        val expected = pinned ?: settingsPackage.takeIf { action != null }
         if (checkOtherTasks && expected != null && !reserve(expected)) return@withContext IN_USE_BY_OTHER
         val before = ScreenReader.topPackage(windows())
         val beforeTree = treeHash()
         // 事先知道由谁打开的(指定了 App、设置页、只有一个 App 接的链接):启动前先静上
         val early = expected ?: linkHandler(action, uri)
         early?.let { beforeOpen(it, null) }
-        val code = shell.startView(id, action, uri, selected)
+        val code = shell.startView(id, action, uri, pinned)
         if (code != ShellService.START_OK) early?.let { notOpened(it, null) }
         when (code) {
             ShellService.START_OK -> Unit
@@ -894,6 +883,27 @@ class AndroidScreen(
             _target.value = TargetApp(opened, task, userOf(task))
         }
         ok(hint = if (expected != null && top != expected) hintLinkElsewhere(top, expected) else null)
+    }
+
+    /**
+     * 禁用名单非空、链接没指定 App 时由谁打开:系统默认的那个没被禁用就用它,不然用第一个没被禁用的;能接的全被禁用就拒绝。
+     * 名单为空、或没有 App 能接时为 null(照常交给系统,不多查一次)。
+     */
+    private fun allowedLinkHandler(action: String?, uri: String?): String? {
+        val access = appAccess.current()
+        if (access.blocked.isEmpty()) return null
+        val intent = Intent(action ?: Intent.ACTION_VIEW).apply {
+            uri?.let { data = android.net.Uri.parse(it) }
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        val pm = a11y.packageManager
+        val candidates = runCatching { pm.queryIntentActivities(intent, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName }.distinct() }
+            .getOrDefault(emptyList())
+        if (candidates.isEmpty()) return null
+        val allowed = candidates.filter { access.denial(it) == null }
+        if (allowed.isEmpty()) access.denial(candidates.first())?.let { throw it }
+        val default = runCatching { pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName }.getOrNull()
+        return default?.takeIf { it in allowed } ?: allowed.first()
     }
 
     /** 没指定 App 的链接由谁打开:系统直接定下的那一个;要问用户选(落在系统选择器)或读不到为 null。 */
@@ -936,8 +946,10 @@ class AndroidScreen(
             }
         }.getOrDefault(emptyList())
         val default = runCatching { pm.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName }.getOrNull()
-        val allowedHandlers = handlers.filter { appAccess.current().denial(it.packageName) == null }
-        if (handlers.isNotEmpty() && allowedHandlers.isEmpty()) appAccess.current().denial(handlers.first().packageName)?.let { throw it }
+        // 由谁接只有这里知道:跳过被禁用的;能接的全被禁用就拒绝
+        val access = appAccess.current()
+        val allowedHandlers = if (access.blocked.isEmpty()) handlers else handlers.filter { access.denial(it.packageName) == null }
+        if (handlers.isNotEmpty() && allowedHandlers.isEmpty()) access.denial(handlers.first().packageName)?.let { throw it }
         val handler = SystemIntents.choose(allowedHandlers, default)
             ?: return@withContext SystemActionResult(ActionResult.Failed(SystemActionResult.NOT_SUPPORTED))
         val pkg = handler.packageName
@@ -1197,6 +1209,7 @@ class AndroidScreen(
         for (v in MainScreenSpill.decide(arrivals, w.since, SPILL_WINDOW_MS, w.topBefore, notSpills, userTaps.toList())) {
             val a = v.arrival
             val pkg = a.packageName ?: continue
+            // 开到用户主屏上的不在应用访问边界看的那块屏上:被禁用的不挪、不读
             appAccess.current().denial(pkg)?.let { throw it }
             last = when (v) {
                 // 系统问打开哪一个的先按选择框处理;要用户亲手处理的弹窗(登录验证、账号确认一类)留在主屏,不挪到 Mika 的屏上
@@ -1383,6 +1396,7 @@ class AndroidScreen(
      * 只看有没有,不读里面写了什么。
      */
     private suspend fun needsUser(pkg: String): Boolean {
+        // 读的是用户主屏上的窗口,应用访问边界看不到:被禁用的不读
         appAccess.current().denial(pkg)?.let { throw it }
         // 刚上来的窗口要一会儿才读得到:读得到内容(或看到密码框)就下结论,到时限还读不到再看是不是防截屏
         val deadline = SystemClock.uptimeMillis() + PICK_READ_MS
@@ -1644,7 +1658,6 @@ class AndroidScreen(
 
     /** 优先对节点(或最近的可点祖先)发点击;不行再在其中心做手势,最后注入触摸。 */
     private suspend fun click(node: AccessibilityNodeInfo): Boolean {
-        appAccess.current().denial(node.packageName?.toString())?.let { throw it }
         val target = ancestorOrSelf(node) { it.isClickable && it.isEnabled }
         if (target != null && target.performAction(AccessibilityNodeInfo.ACTION_CLICK)) return true
         val rect = android.graphics.Rect().also { node.getBoundsInScreen(it) }
@@ -1700,7 +1713,6 @@ class AndroidScreen(
      * 剪贴板只在这一次粘贴期间是 Mika 的:App 读完(字变了)或超时就还原。
      */
     private fun inputText(node: AccessibilityNodeInfo, text: String): Boolean? {
-        appAccess.current().denial(node.packageName?.toString())?.let { throw it }
         node.refresh()
         val before = node.text?.toString().orEmpty()
         fun selectAll() {
@@ -1737,7 +1749,6 @@ class AndroidScreen(
     }
 
     private fun setText(node: AccessibilityNodeInfo, text: String): Boolean {
-        appAccess.current().denial(node.packageName?.toString())?.let { throw it }
         val args = Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) }
         return node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }

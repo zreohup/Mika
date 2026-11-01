@@ -481,14 +481,12 @@ class TaskRun(
                 KnowledgeStore(KnowledgeStore.loadBundled(), userNotes, learnedNotes) to GuideCatalog.loadBundled()
             }
             val appAccess = (service.application as MikaApp).appAccess
+            // 应用访问边界:工具和预览画面共用一份(下面接手机端口时建),窗口没变时核对结果直接沿用,预览不必每一帧都问窗口
+            var accessGuard: com.wangzan101.mika.core.uistate.AppAccessScreenPort? = null
             suspend fun previewAllowed(): Boolean {
-                val screen = phone?.screen ?: return false
+                val guard = accessGuard ?: return false
                 return try {
-                    com.wangzan101.mika.core.uistate.AppAccessScreenPort(
-                        inner = screen, appAccess = appAccess,
-                        packages = screen::accessPackages,
-                        protectedUi = { appAccess.sensitiveUi }, ownPackage = service.packageName,
-                    ).checkAppAccess()
+                    guard.checkAppAccess()
                     true
                 } catch (e: CancellationException) { throw e }
                 catch (_: com.wangzan101.mika.core.access.AppAccessDenied) { false }
@@ -579,7 +577,8 @@ class TaskRun(
                 phoneScreen, appAccess,
                 packages = { phone?.screen?.accessPackages().orEmpty() },
                 protectedUi = { appAccess.sensitiveUi }, ownPackage = service.packageName,
-            )
+                windowToken = { ScreenAccessibility.windowGeneration() },
+            ).also { accessGuard = it }
             afterTask = phoneScreen.afterTask
             // 挪回虚拟屏后等窗口出现,Agent 接下来读屏才读得到
             suspend fun moveTask(taskId: Int, to: Int): Boolean {

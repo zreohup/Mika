@@ -370,7 +370,9 @@
 按包名限制标准手机工具可以读取和操作的 App，规则和边界见 [`app-access.md`](app-access.md)。
 
 - **策略**(`core/access/AppAccess.kt`):没有设置的应用默认允许，分类不决定权限。空阻止列表不因包名缺失而拒绝；非空时归属未知则短暂等待并重读一次，仍未知返回 `app_access_unverified`。文件不可用返回 `app_access_unavailable`，由用户在设置中重置。
-- **门禁**(`core/uistate/AppAccessScreenPort.kt`):包装任务的手机端口，保护读屏结果与显式目标；`ActionExecutor` 在动作前后检查，拒绝以工具结果交回模型。Android 只提供窗口归属和原生目标解析，不向下转型读取设置实现。`ScreenSession` 按权限 revision 清除旧元素引用、截图与定位缓存。
+- **门禁**(`core/uistate/AppAccessScreenPort.kt`):包装任务的手机端口，保护读屏结果与显式目标；`ActionExecutor` 在动作前后检查，拒绝以工具结果交回模型。`ScreenPort` 的每个成员都在门禁里显式写出、不用 `by` 委托，测试逐个成员核对「转交给里面的端口」且「除几个不碰 App 界面的之外都被检查」，端口以后加成员不会漏检。Android 端口只提供窗口归属（`AndroidScreen.accessPackages`），自己只在门禁看不到目标的地方看名单：没指定 App 的链接和系统动作由谁接、开到用户主屏上的 App；不向下转型读取设置实现。`ScreenSession` 按权限 revision 清除旧元素引用、截图与定位缓存。
+- **开销**:名单为空时什么也不多做（不问窗口、系统提示词里也没有应用访问那一段）。名单非空时读屏直接用读到的这一屏里的窗口归属核对，不另问窗口；其余读取和动作的核对结果在窗口没变（无障碍的窗口变动计数没变）、名单没变时最多沿用 1 秒，同一次读屏紧接着的截图和任务预览的一帧帧画面因此不必每次都问窗口。
+- **提示词**:应用访问的规则在 `prompts/capabilities/app-access.md`，只在名单非空（或设置读不出来）时接在手机一段后面；任务进行中才禁用的，拒绝结果自带的说明照样告诉模型下一步怎么做。
 - **存储与界面**(`app/settings/AppAccessStore.kt`、`app/ui/AppAccessScreen.kt`):进程共享、原子写入；打开设置页不上传列表，刷新分类前确认发送应用名称和包名。`AppClassifier` 复用现有模型配置，失败不改变权限。页面、分类和分享文案支持英文、简体和繁体。
 - **主动分享**(`app/cap/phone/a11y/ScreenShareConsent.kt`、`ShareChoice.kt`):用户可允许仅分享屏幕、允许此应用或取消；独立分享许可不解除自动操作限制，采集前后复核来源与权限。敏感授权界面只能由用户操作。
 - **边界**:shell 命令、沙箱、电脑接入（MCP）不受此门禁限制；脚本内调用标准手机工具仍受检查。模型遇到受限应用应重新评估路线，确实需要时说明「设置 › 应用访问」中的允许位置。

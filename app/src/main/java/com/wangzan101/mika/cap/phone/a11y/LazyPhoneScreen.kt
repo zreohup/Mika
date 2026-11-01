@@ -56,9 +56,7 @@ class LazyPhoneScreen(
 
     private fun unavailable() = ActionResult.Failed(PHONE_UNAVAILABLE, lastProblem)
 
-    override suspend fun openApp(packageName: String, cold: Boolean): ActionResult {
-        return built()?.openApp(packageName, cold) ?: unavailable()
-    }
+    override suspend fun openApp(packageName: String, cold: Boolean): ActionResult = built()?.openApp(packageName, cold) ?: unavailable()
     override suspend fun openAppCopy(packageName: String, userId: Int, cold: Boolean): ActionResult =
         built()?.openAppCopy(packageName, userId, cold) ?: unavailable()
     override suspend fun openLink(action: String?, uri: String?, packageName: String?): ActionResult =

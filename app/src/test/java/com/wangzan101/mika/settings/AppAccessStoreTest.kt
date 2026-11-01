@@ -51,7 +51,7 @@ class AppAccessStoreTest {
         assertTrue(store.current().blocked.isEmpty())
     }
 
-    @Test fun corruptFileIsNotAnEmptyBlacklist() {
+    @Test fun corruptFileDoesNotAllowEveryApp() {
         file().writeText("{bad")
         val store = AppAccessStore(file())
         assertEquals("app_access_unavailable", store.current().denial("app")?.code)
