@@ -11,6 +11,7 @@ services:
       - /data/relay.json
       - -owner-key-file
       - /data/owner-key
+      - -trust-proxy
     volumes:
       - relay_data:/data
     read_only: true

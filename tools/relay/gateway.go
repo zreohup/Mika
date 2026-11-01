@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"strings"
 	"sync"
 	"time"
@@ -27,6 +29,9 @@ type frame struct {
 	Headers map[string]string `json:"headers,omitempty"`
 	Body    []byte            `json:"body,omitempty"`
 	Status  int               `json:"status,omitempty"`
+	// Client is the caller's network identity as seen by the gateway. The phone keys its
+	// failed-token cooldown on it, so one anonymous caller cannot lock out the others.
+	Client string `json:"client,omitempty"`
 }
 type deviceLink struct {
 	conn    *websocket.Conn
@@ -61,6 +66,8 @@ type gateway struct {
 	limits          map[string]limitEntry
 	now             func() time.Time
 	requestTimeout  time.Duration
+	// trustProxy reads the caller's address from the reverse proxy's X-Forwarded-For entry.
+	trustProxy bool
 }
 
 func newGateway(base, owner string, s *store) *gateway {
@@ -79,7 +86,7 @@ func (g *gateway) limited(r *http.Request, category string, count int) bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	now := g.now()
-	key := category + ":" + peer(r)
+	key := category + ":" + g.client(r)
 	for k, v := range g.limits {
 		if !now.Before(v.Until) {
 			delete(g.limits, k)
@@ -96,6 +103,37 @@ func (g *gateway) limited(r *http.Request, category string, count int) bool {
 	g.limits[key] = v
 	return v.Count > count
 }
+
+// client names the caller for rate limits and for the phone's failed-token cooldown. Behind a
+// reverse proxy every connection arrives from the proxy, so with trustProxy the last
+// X-Forwarded-For entry is used: the proxy appends it, callers can only add entries before it.
+// It is read only when the direct peer is a loopback or private address, i.e. the local proxy.
+// IPv6 callers are grouped by /64, the smallest block a single subscriber usually holds.
+func (g *gateway) client(r *http.Request) string {
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
+	}
+	ip, err := netip.ParseAddr(host)
+	if err != nil {
+		return ""
+	}
+	if g.trustProxy && (ip.IsLoopback() || ip.IsPrivate()) {
+		if values := r.Header.Values("X-Forwarded-For"); len(values) > 0 {
+			parts := strings.Split(values[len(values)-1], ",")
+			if forwarded, e := netip.ParseAddr(strings.TrimSpace(parts[len(parts)-1])); e == nil {
+				ip = forwarded
+			}
+		}
+	}
+	ip = ip.WithZone("").Unmap()
+	if ip.Is6() {
+		prefix, _ := ip.Prefix(64)
+		return prefix.String()
+	}
+	return ip.String()
+}
+
 func relayPath(path string) bool {
 	return path == "/mcp" || path == "/api/v1" || strings.HasPrefix(path, "/api/v1/")
 }
@@ -108,6 +146,9 @@ func (g *gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.Header().Set("Referrer-Policy", "same-origin")
+	if strings.HasPrefix(g.base, "https://") {
+		w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+	}
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 	if !strings.EqualFold(r.Host, strings.TrimPrefix(strings.TrimPrefix(g.base, "https://"), "http://")) {
 		failure(w, 400, "invalid_host")
@@ -371,7 +412,7 @@ func (g *gateway) proxy(w http.ResponseWriter, r *http.Request) {
 	defer func() { l.mu.Lock(); delete(l.pending, id); l.mu.Unlock() }()
 	ctx, cancel := context.WithTimeout(r.Context(), g.requestTimeout)
 	defer cancel()
-	if err = l.send(ctx, frame{Type: "request", ID: id, Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headers, Body: body}); err != nil {
+	if err = l.send(ctx, frame{Type: "request", ID: id, Method: r.Method, Path: r.URL.Path, Query: r.URL.RawQuery, Headers: headers, Body: body, Client: g.client(r)}); err != nil {
 		l.close()
 		reject(502, "delivery_unknown")
 		return

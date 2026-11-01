@@ -116,7 +116,7 @@ class RelayClient(private val scope: CoroutineScope, private val handle: (HttpRe
             if (f.type == "cancel") { synchronized(jobs) { jobs[f.id]?.cancel() }; return }
             val body = runCatching { Base64.getDecoder().decode(f.body) }.getOrNull()
             if (f.type != "request" || f.method !in setOf("GET", "POST", "DELETE") || !relayPath(f.path) || f.status != 0 ||
-                f.query.length > 8192 || f.query.any { it == '#' || it == '\r' || it == '\n' } ||
+                f.query.length > 8192 || f.query.any { it == '#' || it == '\r' || it == '\n' } || !CLIENT.matches(f.client) ||
                 body == null || body.size > MAX_BODY || !validHeaders(f.headers)) { reject(webSocket); return }
             synchronized(jobs) {
                 // Reusing an ID is a protocol violation, including after the original request completed.
@@ -126,7 +126,9 @@ class RelayClient(private val scope: CoroutineScope, private val handle: (HttpRe
                 val job = workers.launch(start = kotlinx.coroutines.CoroutineStart.LAZY) {
                     try {
                         // A synthetic unspecified address is not loopback and never passes through USB authentication.
-                        val req = HttpRequest(f.method, f.path, f.headers, body, InetAddress.getByAddress(byteArrayOf(0, 0, 0, 0)), query = f.query)
+                        // The gateway's view of the caller only keys the failed-token cooldown, apart from local addresses.
+                        val req = HttpRequest(f.method, f.path, f.headers, body, InetAddress.getByAddress(byteArrayOf(0, 0, 0, 0)),
+                            query = f.query, source = "relay|${f.client}")
                         val result = runInterruptible { handle(req) }
                         reply(webSocket, f.id, result)
                     } catch (e: kotlinx.coroutines.CancellationException) { throw e }
@@ -169,6 +171,8 @@ class RelayClient(private val scope: CoroutineScope, private val handle: (HttpRe
         private val json = Json { encodeDefaults = false }
         private val REQUEST_HEADERS = setOf("authorization", "origin", "x-mika-client", "content-type", "accept", "mcp-protocol-version", "mcp-method", "mcp-name", "mcp-session-id", "last-event-id")
         private val RESPONSE_HEADERS = setOf("content-type", "allow", "retry-after", "www-authenticate", "mcp-protocol-version")
+        /** 网关看到的调用方:IPv4 地址或 IPv6 的 /64 前缀;网关没给时为空,这些调用方共用一份冷却。 */
+        private val CLIENT = Regex("[0-9A-Fa-f.:/]{0,64}")
         private fun relayPath(path: String) = path == "/mcp" || path == "/api/v1" || path.startsWith("/api/v1/")
         private fun validHeaders(headers: Map<String, String>): Boolean = headers.size <= 16 &&
             headers.entries.sumOf { it.key.length + it.value.length } <= 8192 &&
@@ -177,4 +181,5 @@ class RelayClient(private val scope: CoroutineScope, private val handle: (HttpRe
 }
 
 @Serializable internal data class RelayFrame(val type: String, val id: String, val method: String = "", val path: String = "",
-    val headers: Map<String, String> = emptyMap(), val body: String = "", val status: Int = 0, val query: String = "")
+    val headers: Map<String, String> = emptyMap(), val body: String = "", val status: Int = 0, val query: String = "",
+    val client: String = "")

@@ -36,7 +36,7 @@ class RelayGatewayIntegrationTest {
         val owner = tmp.newFile("owner-key").apply { writeText(key) }
         val log = tmp.newFile("gateway.log")
         val process = ProcessBuilder(System.getProperty("mika.relayBinary"), "-listen", "127.0.0.1:$port", "-public-url", base,
-            "-local-http", "-owner-key-file", owner.absolutePath, "-data", tmp.root.resolve("relay.json").absolutePath)
+            "-local-http", "-trust-proxy", "-owner-key-file", owner.absolutePath, "-data", tmp.root.resolve("relay.json").absolutePath)
             .redirectErrorStream(true).redirectOutput(log).start()
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
         val http = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS).build()
@@ -55,15 +55,18 @@ class RelayGatewayIntegrationTest {
             val tasks = FakeRemoteTasks()
             val endpoints = RemoteEndpoints(tasks, "integration")
             val phoneToken = AtomicReference("phone-common-access-token")
-            val access = RemoteAccess(phoneToken::get, loopbackToken = { "usb-only-token" }, validTokensBypassLockout = true)
+            val access = RemoteAccess(phoneToken::get, loopbackToken = { "usb-only-token" })
             tunnel = RelayClient(scope, { req -> access.handle(req, endpoints::handle) }, allowLoopbackHttp = true)
             tunnel.start(pairing)
             withTimeout(5_000) { tunnel.state.first { it == RelayState.Online } }
-            fun post(body: String, token: String = phoneToken.get()): Pair<Int, String> =
-                http.newCall(Request.Builder().url("$base/mcp").header("Authorization", "Bearer $token")
+            // The test client stands in for the reverse proxy: the gateway reads the caller from X-Forwarded-For.
+            fun post(body: String, token: String = phoneToken.get(), caller: String = "198.51.100.7"): Pair<Int, String> =
+                http.newCall(Request.Builder().url("$base/mcp").header("Authorization", "Bearer $token").header("X-Forwarded-For", caller)
                     .post(body.toRequestBody("application/json".toMediaType())).build()).execute().use { it.code to it.body!!.string() }
-            repeat(5) { assertEquals(401, post("{}", "anonymous-client").first) }
-            assertEquals(429, post("{}", "anonymous-client").first)
+            repeat(5) { assertEquals(401, post("{}", "anonymous-client", caller = "203.0.113.9").first) }
+            assertEquals(429, post("{}", "anonymous-client", caller = "203.0.113.9").first)
+            // A locked-out caller learns nothing, not even with the right token; other callers are unaffected.
+            assertEquals(429, post("""{"jsonrpc":"2.0","id":0,"method":"tools/list"}""", caller = "203.0.113.9").first)
             assertEquals(200, post("""{"jsonrpc":"2.0","id":0,"method":"tools/list"}""").first)
             assertEquals(401, post("{}", pairing.deviceToken).first)
             assertEquals(401, post("{}", "usb-only-token").first)
@@ -81,12 +84,14 @@ class RelayGatewayIntegrationTest {
             val tokenFile = tmp.newFile("phone-token").apply { writeText(phoneToken.get()) }
             val script = File("../tools/mika/scripts/mika_cli.py").canonicalPath
             fun cli(vararg args: String): JsonObject {
+                lateinit var err: File
                 val cli = ProcessBuilder(listOf(System.getProperty("mika.python", "python3"), script,
                     "--url", base, "--token-file", tokenFile.absolutePath, "--json") + args)
-                    .directory(tmp.root).redirectErrorStream(true).start()
+                    .directory(tmp.root).redirectError(File.createTempFile("cli", ".err", tmp.root).also { err = it }).start()
                 if (!cli.waitFor(10, TimeUnit.SECONDS)) { cli.destroyForcibly(); fail("Remote CLI timed out") }
+                // Progress goes to stderr; stdout carries only the JSON result.
                 val output = cli.inputStream.bufferedReader().readText()
-                assertFalse(output.contains(phoneToken.get()))
+                assertFalse(output.contains(phoneToken.get())); assertFalse(err.readText().contains(phoneToken.get()))
                 assertEquals(output, 0, cli.exitValue())
                 return Json.parseToJsonElement(output).jsonObject
             }

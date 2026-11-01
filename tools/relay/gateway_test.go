@@ -379,3 +379,88 @@ func TestRevokedDeviceCannotUnpairItsReplacement(t *testing.T) {
 		t.Fatal("replacement pairing lost")
 	}
 }
+
+func TestCallerIdentityComesFromTheLocalProxyOnly(t *testing.T) {
+	g := &gateway{}
+	req := func(remote string, forwarded ...string) *http.Request {
+		r := httptest.NewRequest("GET", "/mcp", nil)
+		r.RemoteAddr = remote
+		for _, v := range forwarded {
+			r.Header.Add("X-Forwarded-For", v)
+		}
+		return r
+	}
+	if got := g.client(req("127.0.0.1:5000", "203.0.113.9")); got != "127.0.0.1" {
+		t.Fatalf("header trusted without -trust-proxy: %q", got)
+	}
+	g.trustProxy = true
+	cases := []struct {
+		r    *http.Request
+		want string
+	}{
+		// The proxy appends the real caller last; earlier entries come from the caller and are ignored.
+		{req("127.0.0.1:5000", "10.9.9.9, 203.0.113.9"), "203.0.113.9"},
+		{req("172.18.0.3:5000", "1.1.1.1", "203.0.113.9"), "203.0.113.9"},
+		{req("198.51.100.1:5000", "203.0.113.9"), "198.51.100.1"},
+		{req("127.0.0.1:5000", "not-an-address"), "127.0.0.1"},
+		{req("127.0.0.1:5000", "2001:db8:1:2:aaaa::1"), "2001:db8:1:2::/64"},
+		{req("127.0.0.1:5000", "::ffff:203.0.113.9"), "203.0.113.9"},
+		{req("127.0.0.1:5000"), "127.0.0.1"},
+	}
+	for i, c := range cases {
+		if got := g.client(c.r); got != c.want {
+			t.Errorf("case %d: got %q, want %q", i, got, c.want)
+		}
+	}
+}
+
+func TestOneCallerCannotExhaustAnotherCallersLimits(t *testing.T) {
+	f := newFixture(t)
+	f.g.trustProxy = true
+	post := func(caller string) int {
+		form := url.Values{"owner_key": {"wrong"}, "action": {"pair"}}
+		req, _ := http.NewRequest("POST", f.server.URL+"/admin", strings.NewReader(form.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("X-Forwarded-For", caller)
+		r, err := f.client.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.Body.Close()
+		return r.StatusCode
+	}
+	for i := 0; i < 5; i++ {
+		post("203.0.113.9")
+	}
+	if s := post("203.0.113.9"); s != 429 {
+		t.Fatalf("attacker not limited: %d", s)
+	}
+	if s := post("198.51.100.7"); s != 403 {
+		t.Fatalf("owner blocked by another caller: %d", s)
+	}
+}
+
+func TestForwardedRequestCarriesCallerForPhoneCooldown(t *testing.T) {
+	f := newFixture(t)
+	f.g.trustProxy = true
+	f.pair(t)
+	c := f.connect(t)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		req, _ := http.NewRequest("GET", f.server.URL+"/api/v1", nil)
+		req.Header.Set("X-Forwarded-For", "203.0.113.9")
+		if r, err := f.client.Do(req); err == nil {
+			r.Body.Close()
+		}
+	}()
+	in := readFrame(t, c)
+	if in.Client != "203.0.113.9" {
+		t.Fatalf("caller not forwarded: %q", in.Client)
+	}
+	if _, ok := in.Headers["x-forwarded-for"]; ok {
+		t.Fatal("proxy header must not reach the phone")
+	}
+	sendFrame(t, c, frame{Type: "response", ID: in.ID, Status: 200})
+	<-done
+}

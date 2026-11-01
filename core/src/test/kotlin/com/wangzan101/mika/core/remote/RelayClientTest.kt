@@ -113,6 +113,39 @@ class RelayClientTest {
         }
     }
 
+    @Test fun gatewayCallerKeysCooldownSoOneGuesserCannotLockOutOthers() = runBlocking {
+        val opened = socket()
+        val access = RemoteAccess({ "phone-token" })
+        val sources = java.util.Collections.synchronizedList(mutableListOf<String>())
+        val client = start { req -> sources += req.source; access.handle(req) { HttpResponse.empty(200) } }
+        var n = 0
+        suspend fun send(ws: WebSocket, token: String, caller: String): Int {
+            ws.send(Json.encodeToString(RelayFrame("request", "caller_request_${n++}_padding", "GET", "/api/v1",
+                mapOf("authorization" to "Bearer $token"), client = caller)))
+            return replies.receive().status
+        }
+        withTimeout(3_000) {
+            val ws = opened.await(); client.state.first { it == RelayState.Online }
+            repeat(5) { assertEquals(401, send(ws, "guess", "203.0.113.9")) }
+            // Locked out even with the right token: letting it through would confirm a correct guess.
+            assertEquals(429, send(ws, "phone-token", "203.0.113.9"))
+            assertEquals(200, send(ws, "phone-token", "2001:db8:1:2::/64"))
+        }
+        assertEquals("relay|203.0.113.9", sources.first())
+        assertFalse(sources.any { it == "0.0.0.0" || it.startsWith("127.") })
+    }
+
+    @Test fun malformedCallerIsRejected() = runBlocking {
+        val opened = socket(); val calls = AtomicInteger()
+        val client = start { calls.incrementAndGet(); HttpResponse.empty(200) }
+        withTimeout(3_000) {
+            val ws = opened.await(); client.state.first { it == RelayState.Online }
+            ws.send(Json.encodeToString(RelayFrame("request", "caller_request_bad_1", "GET", "/api/v1", client = "x\nlocalhost")))
+            client.state.first { it == RelayState.Unauthorized }
+        }
+        assertEquals(0, calls.get())
+    }
+
     @Test fun incompatibleGatewayStopsRetryWithUpdateState() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(426))
         val client = start { HttpResponse.empty(200) }

@@ -27,6 +27,7 @@ func main() {
 	data := flag.String("data", "data/relay.json", "persistent state file")
 	ownerFile := flag.String("owner-key-file", "data/owner-key", "file containing the owner's secret (at least 32 characters)")
 	initKey := flag.Bool("init-owner-key", false, "create an owner key file and exit; never overwrite")
+	trustProxy := flag.Bool("trust-proxy", false, "take the caller's address from the last X-Forwarded-For entry set by a reverse proxy on a loopback or private address")
 	local := flag.Bool("local-http", false, "development only: allow HTTP with both public URL and listen address on 127.0.0.1")
 	flag.Parse()
 	if *initKey {
@@ -61,6 +62,7 @@ func main() {
 		log.Fatal(err)
 	}
 	g := newGateway(base, strings.TrimSpace(string(key)), s)
+	g.trustProxy = *trustProxy
 	srv := &http.Server{Addr: *listen, Handler: g, ReadHeaderTimeout: 10 * time.Second, IdleTimeout: 90 * time.Second, MaxHeaderBytes: 16 << 10}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -139,5 +141,3 @@ func bearer(r *http.Request) string {
 	}
 	return ""
 }
-
-func peer(r *http.Request) string { host, _, _ := net.SplitHostPort(r.RemoteAddr); return host }
