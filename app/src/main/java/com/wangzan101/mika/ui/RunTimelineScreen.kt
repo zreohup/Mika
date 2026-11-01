@@ -101,7 +101,7 @@ fun RunTimelineScreen(vm: RunTimelineViewModel, onBack: () -> Unit) {
                     item("header") {
                         HeaderGroup(u.header) {
                             try {
-                                saveLog.launch("mika-${vm.runId}.jsonl")
+                                saveLog.launch("mika-usage-${vm.runId}.jsonl")
                             } catch (_: ActivityNotFoundException) {
                                 Toast.makeText(context, R.string.timeline_export_failed, Toast.LENGTH_SHORT).show()
                             }
