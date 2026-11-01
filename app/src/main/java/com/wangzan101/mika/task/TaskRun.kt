@@ -63,6 +63,7 @@ import com.wangzan101.mika.core.agent.StopSummary
 import com.wangzan101.mika.core.assembly.knownTools
 import com.wangzan101.mika.ui.ToolLabels
 import com.wangzan101.mika.core.agent.RunOutcome
+import com.wangzan101.mika.core.agent.GateReason
 import com.wangzan101.mika.core.agent.RunProgress
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.agent.Turn
@@ -414,7 +415,7 @@ class TaskRun(
     }
 
     /** 超出并行上限在排队;放出来开跑时 [dequeue]。 */
-    fun queue(position: Int) { setState(TaskState.Held(TaskGate.paused(trPlural(R.plurals.queue_ahead, position)))) }
+    fun queue(position: Int) { setState(TaskState.Held(GateReason.queued(trPlural(R.plurals.queue_ahead, position)))) }
     fun dequeue() { setState(TaskState.Running(0, TaskService.PREPARING)) }
 
     /** 本任务的沙箱:一个任务一份(导出额度按任务算),工作区是本对话的。 */
@@ -533,7 +534,7 @@ class TaskRun(
                         if (!parallel || !service.otherRunHasDisplay(this@TaskRun)) throw e
                         // 外壳建不出第二块屏:这次运行期间不再并行;本任务排在后面,等别的任务的屏都放掉再建
                         service.taskState.markSecondDisplayFailed()
-                        publish(TaskState.Held(TaskGate.paused(WAITING_DISPLAY)))
+                        publish(TaskState.Held(GateReason.queued(WAITING_DISPLAY)))
                         while (service.otherRunHasDisplay(this@TaskRun)) delay(DISPLAY_RETRY_MS)
                         create()
                     }.also { d ->

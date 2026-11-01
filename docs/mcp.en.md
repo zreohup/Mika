@@ -133,7 +133,8 @@ Statuses:
 
 - `starting`: just handed to the phone, not started yet.
 - `running`: in progress, with the latest progress note.
-- `paused`: waiting for a condition, such as the phone being unlocked (it carries on by itself afterwards), or waiting in the queue.
+- `queued`: not started yet, waiting behind other tasks (the limit on tasks running at once is reached, or this conversation already has a task running); it starts by itself when its turn comes. Wait or cancel.
+- `paused`: waiting for a condition, such as the phone being unlocked (it carries on by itself afterwards).
 - `waiting_for_answer`: Mika asked a question; answer with `mika_answer` (answering on the phone works too). If nobody answers for a long time, Mika carries on as if there were no answer.
 - `waiting_on_phone`: this step can only be handled by a person on the phone, such as a step handed over for you to do yourself. The computer can't answer it; wait or cancel. The phone shows its usual notification.
 - `done`: finished, with the answer; `verified` says whether the answer was checked.
