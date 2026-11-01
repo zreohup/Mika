@@ -105,4 +105,11 @@
     <string name="sandbox_usage_clear_all_title">Clear every chat’s workspace?</string>
     <string name="sandbox_usage_clear_all_body">Files in every chat’s workspace will be deleted: attachments, shared screens and files tasks wrote. Chats stay. Chats with a running task are skipped.</string>
     <string name="sandbox_usage_note">The runtime and skills come with the app and aren’t cleared here; to start over, use “Reset environment” above.</string>
+    <string name="appearance_title">Language and appearance</string>
+    <string name="appearance_system">Follow the system</string>
+    <string name="appearance_system_detail">Light or dark, whichever the phone is in</string>
+    <string name="appearance_light">Always light</string>
+    <string name="appearance_dark">Always dark</string>
+    <string name="settings_self_config">Let Mika change its own settings</string>
+    <string name="settings_self_config_sub">When on, tasks get one tool to read and change these preferences (pace, mute, capsule, appearance, screen-on). Models, API keys, container network and anything that deletes data are never included</string>
 </resources>
