@@ -12,6 +12,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -28,10 +30,15 @@ import com.wangzan101.mika.ui.components.GroupLabel
 import com.wangzan101.mika.ui.components.PillTone
 import com.wangzan101.mika.ui.components.RadioRow
 import com.wangzan101.mika.ui.components.StatusPill
+import com.wangzan101.mika.ui.components.InputRow
+import com.wangzan101.mika.ui.components.MikaButton
+import com.wangzan101.mika.ui.components.ButtonKind
 import com.wangzan101.mika.ui.theme.MikaTheme
 import com.wangzan101.mika.voice.SpeechChoice
 import com.wangzan101.mika.voice.SpeechOptions
 import com.wangzan101.mika.voice.SystemSpeech
+import com.wangzan101.mika.voice.DoubaoCredentials
+import com.wangzan101.mika.voice.DoubaoProtocol
 
 /** 选择页上的动作。 */
 class SpeechPickActions(
@@ -39,6 +46,8 @@ class SpeechPickActions(
     val pick: (SpeechChoice) -> Unit = {},
     /** (服务商 id, 模型名):先试转,通了才选上并返回;列表里点的和手填的都走这里。 */
     val pickModel: (String, String) -> Unit = { _, _ -> },
+    val saveDoubao: (String, String, String, String) -> Unit = { _, _, _, _ -> },
+    val clearDoubao: () -> Unit = {},
 )
 
 /**
@@ -49,6 +58,8 @@ class SpeechPickActions(
 fun SpeechModelScreen(store: ProviderStore, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val settings = (context.applicationContext as? MikaApp)?.speech
+    var doubaoConfigured by remember { mutableStateOf(settings?.hasDoubaoCredentials == true) }
     val vm = remember {
         ModelSetupViewModel(
             store, scope,
@@ -67,15 +78,24 @@ fun SpeechModelScreen(store: ProviderStore, onBack: () -> Unit) {
         SpeechPickActions(
             pick = { vm.pickSpeech(it); onBack() },
             pickModel = { pid, model -> vm.pickSpeechModel(pid, model, onPicked = onBack) },
+            saveDoubao = { key, appId, token, resource ->
+                checkNotNull(settings).saveDoubao(DoubaoCredentials(key, appId, token), resource)
+                onBack()
+            },
+            clearDoubao = {
+                settings?.clearDoubao()
+                doubaoConfigured = false
+                settings?.let { vm.pickSpeech(it.choice.value) }
+            },
         ),
-        onBack,
+        onBack, doubaoConfigured,
     )
 }
 
 /** 不带状态的选择页,便于测试:顶上一段说明,「手机自带」「不用」,下面按服务商分组单选。 */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: SpeechPickActions, onBack: () -> Unit) {
+fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: SpeechPickActions, onBack: () -> Unit, doubaoConfigured: Boolean = false) {
     val c = MikaTheme.colors
     val system = ui.systemSpeech
     val choice = ui.speech
@@ -111,6 +131,7 @@ fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: Sp
                 subtitle = tr(R.string.speech_off_note),
             )
         }
+        DoubaoSetup(choice, doubaoConfigured, actions)
         SpeechOptions.groups(ui.providers).forEach { g ->
             val p = g.provider
             val testing = ui.speechTesting == p.id
@@ -144,4 +165,49 @@ fun SpeechModelContent(ui: ModelSetupUi, probe: Map<String, String>, actions: Sp
         }
         FooterNote(tr(R.string.speech_footer), Modifier.padding(top = 8.dp))
     }
+}
+
+/** ASR has its own credentials and resource IDs; it never lists or probes chat models. */
+@Composable
+private fun DoubaoSetup(choice: SpeechChoice, configured: Boolean, actions: SpeechPickActions) {
+    var legacy by remember { mutableStateOf(false) }
+    // Secrets are not saveable state and are never populated from stored credentials.
+    var key by remember { mutableStateOf("") }
+    var appId by remember { mutableStateOf("") }
+    var token by remember { mutableStateOf("") }
+    var resource by remember { mutableStateOf((choice as? SpeechChoice.Doubao)?.resourceId ?: DoubaoProtocol.DURATION) }
+    var failed by remember { mutableStateOf(false) }
+    val credentials = DoubaoCredentials(if (legacy) "" else key.trim(), if (legacy) appId.trim() else "", if (legacy) token.trim() else "")
+    val unchanged = key.isBlank() && appId.isBlank() && token.isBlank()
+    GroupLabel(tr(R.string.speech_doubao_provider))
+    GroupCard {
+        RadioRow(tr(R.string.speech_doubao_model), selected = choice is SpeechChoice.Doubao,
+            enabled = configured, first = true,
+            onClick = { actions.pick(SpeechChoice.Doubao(resource)) },
+            subtitle = tr(R.string.speech_doubao_note))
+        RadioRow(tr(R.string.speech_doubao_new), selected = !legacy, onClick = { legacy = false; appId = ""; token = "" })
+        RadioRow(tr(R.string.speech_doubao_legacy), selected = legacy, onClick = { legacy = true; key = "" })
+        if (legacy) {
+            InputRow("App ID", appId, { appId = it }, tr(R.string.speech_doubao_enter_app))
+            InputRow("Access Token", token, { token = it }, tr(R.string.speech_doubao_enter_key), secret = true)
+        } else {
+            InputRow("API Key", key, { key = it }, tr(R.string.speech_doubao_enter_key), secret = true)
+        }
+        RadioRow(tr(R.string.speech_doubao_duration), selected = resource == DoubaoProtocol.DURATION,
+            onClick = { resource = DoubaoProtocol.DURATION })
+        RadioRow(tr(R.string.speech_doubao_concurrent), selected = resource == DoubaoProtocol.CONCURRENT,
+            onClick = { resource = DoubaoProtocol.CONCURRENT })
+    }
+    FooterNote(tr(R.string.speech_doubao_privacy))
+    MikaButton(tr(R.string.speech_doubao_save), modifier = Modifier.padding(top = 8.dp).testTag("speech-doubao-save"),
+        enabled = credentials.valid || configured && unchanged,
+        onClick = {
+            failed = runCatching {
+                if (configured && unchanged) actions.pick(SpeechChoice.Doubao(resource))
+                else actions.saveDoubao(credentials.apiKey, credentials.appId, credentials.accessKey, resource)
+            }.isFailure
+            key = ""; appId = ""; token = ""
+        })
+    if (configured) MikaButton(tr(R.string.speech_doubao_remove), actions.clearDoubao, kind = ButtonKind.Text)
+    if (failed) FooterNote(tr(R.string.speech_doubao_save_failed), color = MikaTheme.colors.bad)
 }
