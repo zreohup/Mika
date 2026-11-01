@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 75a58a37248f -->
+<!-- translated-from: README.md @ fb18e53672b0 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -151,7 +151,7 @@ API キーなしで、ChatGPT（Plus / Pro）、xAI / Grok、OpenRouter のア�
 ## コミュニティと貢献
 
 - **ドキュメント**：すべてのドキュメントとおすすめの読む順番は[ドキュメント一覧](../README.en.md)へ
-- **コミュニティ**：[X のグループチャット](https://x.com/i/chat/group_join/g2116500883139862983/xP74Qyff3X)に参加できます。WeChat で作者に連絡するには、アプリの About › Contact the author にある QR コードを読み取ってください（友達申請に「Mika」と書いてください）
+- **コミュニティ**：[X のグループチャット](https://x.com/i/chat/group_join/g2116926829198246025/48B52j5svL)に参加できます。WeChat で作者に連絡するには、アプリの About › Contact the author にある QR コードを読み取ってください（友達申請に「Mika」と書いてください）
 - **作者をフォロー**：X [@wangzan101](https://x.com/wangzan101)
 - **問題を報告**：[Issue を作成](https://github.com/wangzan101/Mika/issues/new/choose)。アプリの About › Send feedback から診断情報を添えられます
 - **貢献する**：アプリやサイトの使い方の知識を書き足す（プレーンテキストで、コードは不要）、またはコードで貢献。[コントリビューションガイド](../../.github/CONTRIBUTING.md)をご覧ください

@@ -1,4 +1,4 @@
-<!-- translated-from: README.md @ 75a58a37248f -->
+<!-- translated-from: README.md @ fb18e53672b0 -->
 <div align="center">
 
 <img src="../media/logo.png" alt="Mika" width="88" />
@@ -149,7 +149,7 @@
 ## 社群與貢獻
 
 - **文件**：全部文件和閱讀順序見[文件目錄](../README.md)
-- **交流**：App 裡「關於 › 聯絡作者」掃碼加作者微信（請備註 Mika）；不用微信的話可以加入 [X 群聊](https://x.com/i/chat/group_join/g2116500883139862983/xP74Qyff3X)
+- **交流**：App 裡「關於 › 聯絡作者」掃碼加作者微信（請備註 Mika）；不用微信的話可以加入 [X 群聊](https://x.com/i/chat/group_join/g2116926829198246025/48B52j5svL)
 - **關注作者**：X [@wangzan101](https://x.com/wangzan101)
 - **回報問題**：[開 Issue](https://github.com/wangzan101/Mika/issues/new/choose)，App 裡「關於 › 回報問題」可以附上診斷資訊
 - **參與貢獻**：為某個 App、網站補一份使用知識（純文字，不用寫程式），或者貢獻程式碼，見[貢獻指南](../../.github/CONTRIBUTING.zh-CN.md)
