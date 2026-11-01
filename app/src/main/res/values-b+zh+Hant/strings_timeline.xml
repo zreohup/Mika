@@ -87,4 +87,5 @@
     <string name="timeline_export_hint">將每次模型回覆的 Token 用量、快取命中和上下文壓縮事件儲存為 JSONL。</string>
     <string name="timeline_exported">已儲存用量記錄</string>
     <string name="timeline_export_failed">無法匯出用量記錄，請檢查記錄是否仍在、所選位置能否寫入。</string>
+    <string name="timeline_running">進行中</string>
 </resources>
