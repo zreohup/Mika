@@ -53,6 +53,8 @@ class PromptSurfaceTest {
                     web = FakeWebPort(), inlineScreen = true, deepLinks = true,
                     memory = mem, utterances = UserUtterances(), sandbox = FakeSandbox(SandboxStatus.Ready(network = false)), workspace = { "w" },
                     personalSkills = com.wangzan101.mika.core.skills.InMemoryPersonalSkills(),
+                    childHost = com.wangzan101.mika.core.child.ChildRunHost { spec, _ ->
+                        com.wangzan101.mika.core.child.ChildResult(spec.id, com.wangzan101.mika.core.child.ChildPhase.Completed, "") },
                 )
             }, SpeedFlags(inlineScreen = true, batchSteps = true, deepLinks = true), mem)
         },
