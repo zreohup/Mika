@@ -39,6 +39,8 @@ object StatusCopy {
     fun progress(p: RunProgress): String = when (p) {
         is RunProgress.Replay -> tr(R.string.progress_replay, p.step, p.total)
         is RunProgress.Batch -> trPlural(R.plurals.progress_batch, p.steps)
+        // 只是在等另一个任务,不要用户做什么
+        is RunProgress.WaitingForApp -> tr(R.string.progress_waiting_app, p.app)
     }
 
     /** 付款接管的商品、金额、地址,一行一项;都没有时为 null。卡片和通知共用。 */

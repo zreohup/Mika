@@ -76,5 +76,4 @@
     <string name="screens_waiting">等待中</string>
     <string name="screens_needs_you">等你處理</string>
     <string name="screens_zoom">放大這塊螢幕</string>
-    <string name="gate_busy_app">等另一個任務用完 %1$s</string>
 </resources>

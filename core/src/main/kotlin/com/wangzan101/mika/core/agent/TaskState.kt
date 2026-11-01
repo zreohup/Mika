@@ -9,6 +9,11 @@ sealed interface RunProgress {
     data class Replay(val step: Int, val total: Int) : RunProgress
     /** 一次执行模型给的 [steps] 步(do_steps)。 */
     data class Batch(val steps: Int) : RunProgress
+    /**
+     * 另一个任务正用着 [app](界面上的名字),这一步停下来等它放开(打开 App 时模型要了等)。
+     * 只是在等别的任务,不要用户做什么:界面上照样算在干活,不算「要你处理」。
+     */
+    data class WaitingForApp(val app: String) : RunProgress
 }
 
 sealed interface TaskState {

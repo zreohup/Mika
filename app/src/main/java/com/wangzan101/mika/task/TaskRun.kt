@@ -63,6 +63,7 @@ import com.wangzan101.mika.core.agent.StopSummary
 import com.wangzan101.mika.core.assembly.knownTools
 import com.wangzan101.mika.ui.ToolLabels
 import com.wangzan101.mika.core.agent.RunOutcome
+import com.wangzan101.mika.core.agent.RunProgress
 import com.wangzan101.mika.core.agent.TaskState
 import com.wangzan101.mika.core.agent.Turn
 import com.wangzan101.mika.core.run.RunId
@@ -543,15 +544,20 @@ class TaskRun(
                 }
                 val audio = recovery.audioMute(shell, key).also { mute = it }
                 val muter = appMuter(shell, audio)
-                // 另一个任务正占着这个 App 时,界面标成「等待中」;它放开之后把状态放回去
-                var waitedFrom: TaskState? = null
+                // 占用登记里的名字:另一份用户里的那份单独占,和本来那份互不挡;占着的任务还在不在用它,问内置助手
+                fun claimKey(pkg: String, user: Int?) = if (user == null) pkg else "$pkg@$user"
+                fun stillUsed(pkg: String, user: Int?): () -> Boolean = {
+                    runCatching { if (user == null) shell.displayOfPackage(pkg) else shell.displayOfPackageInUser(pkg, user) }.getOrDefault(-1) >= 0
+                }
                 val screen = AndroidScreen(
                     a11y, shell, agentDisplay, { recovery.markClipHeld(it) },
                     clipLock = service.clipLock, checkOtherTasks = parallel,
-                    reserve = { pkg -> service.reservePackage(pkg, key) { runCatching { shell.displayOfPackage(pkg) }.getOrDefault(-1) >= 0 } },
-                    // 另一份用户里的那份单独占:和本来那份互不挡
-                    reserveCopy = { pkg, user ->
-                        service.reservePackage("$pkg@$user", key) { runCatching { shell.displayOfPackageInUser(pkg, user) }.getOrDefault(-1) >= 0 }
+                    reserve = { pkg -> service.reservePackage(pkg, key, stillUsed(pkg, null)) },
+                    reserveCopy = { pkg, user -> service.reservePackage(claimKey(pkg, user), key, stillUsed(pkg, user)) },
+                    appFree = { pkg, user -> service.packageFree(claimKey(pkg, user), key, stillUsed(pkg, user)) },
+                    // 模型要了等:等的时候界面写「等另一个任务用完某 App」(仍是在干活,不算要你处理),等完放回原来那句
+                    awaitApp = { pkg, user, timeoutMs, free ->
+                        waitingForApp(ConfirmationNotifier.appLabel(service, pkg)) { service.awaitPackage(claimKey(pkg, user), key, timeoutMs, free) }
                     },
                     clipSaved = { original, ours -> recovery.saveClip(original, ours) },
                     handedOver = { handoverRef?.handedOver == true },
@@ -561,19 +567,6 @@ class TaskRun(
                     beforeOpen = muter::beforeOpen,
                     notOpened = muter::notOpened,
                     appAccess = appAccess,
-                    // 设置 › 干活时 ›「另一个任务在用同一个 App 时等着」
-                    waitingFor = { pkg ->
-                        if (!FeatureFlags.get(service).waitForBusyApp()) false
-                        else {
-                            waitedFrom = _state.value
-                            publish(TaskState.Held(TaskGate.busyApp(ConfirmationNotifier.appLabel(service, pkg))))
-                            true
-                        }
-                    },
-                    waitedFor = {
-                        waitedFrom?.let { publish(it) }
-                        waitedFrom = null
-                    },
                 )
                 val side0 = PhoneSide(shell, a11y, screen, agentDisplay, muter)
                 phone = side0
@@ -1135,6 +1128,21 @@ class TaskRun(
     }
 
     private fun sandboxOnline() = (sandbox.status() as? SandboxStatus.Ready)?.network == true
+
+    /**
+     * 等另一个任务放开 [app] 的这段时间:对外的进展写「等另一个任务用完 [app]」,仍是 Running,不是暂停、也不要你处理;
+     * 等完(放开了、等不到、被停掉)把等之前那一句放回去。等之前不在干活(比如已经停下来要你处理)就不改。
+     */
+    private suspend fun <T> waitingForApp(app: String, wait: suspend () -> T): T {
+        val before = _state.value as? TaskState.Running ?: return wait()
+        val waiting = before.copy(progress = RunProgress.WaitingForApp(app))
+        publish(waiting)
+        try {
+            return wait()
+        } finally {
+            if (_state.value == waiting) publish(before)
+        }
+    }
 
     private fun publish(state: TaskState) {
         // 被挪走后到 gate 拦下之前,循环可能还在推理:对外先显示暂停

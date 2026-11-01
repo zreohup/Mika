@@ -129,6 +129,9 @@ class TaskService : Service() {
     }
 
     internal fun reservePackage(pkg: String, runKey: String, stillUsed: () -> Boolean) = center.reserve(pkg, runKey, stillUsed)
+    internal fun packageFree(pkg: String, runKey: String, stillUsed: () -> Boolean) = center.appFree(pkg, runKey, stillUsed)
+    internal suspend fun awaitPackage(pkg: String, runKey: String, timeoutMs: Long, free: suspend () -> Boolean) =
+        center.awaitApp(pkg, runKey, timeoutMs, free)
 
     /** 这个对话空着就当场开始;还有任务就留着,它收尾时([onRunEnded])交出来。查与留在同一把锁里。 */
     internal fun deferMessage(threadId: String, text: String) {

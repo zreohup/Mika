@@ -1864,6 +1864,17 @@ class ChatViewModelTest {
         assertEquals(listOf(joined) to emptyList<SteerNote>(), steersAroundDraft(listOf(joined)))
         assertEquals(emptyList<SteerNote>() to listOf(received), steersAroundDraft(listOf(received)))
     }
+    /** 等另一个任务放开 App 时仍在干活:进展那一行写在等谁,不算暂停、也不算要你处理。 */
+    @Test fun waitingForAnotherTasksAppIsStillWorking() = runTest {
+        val vm = vm()
+        vm.send("给张三发消息", ok)
+        emit(TaskState.Running(2, "打开聊天", tool = "phone_launch_app", progress = com.wangzan101.mika.core.agent.RunProgress.WaitingForApp("聊天")))
+        val ex = vm.ui.value.exchanges.single()
+        assertEquals(ExchangeStatus.Working, ex.status)
+        assertEquals("等另一个任务用完聊天", ex.line)
+        assertEquals(ComposerMode.Busy, vm.ui.value.composer)
+    }
+
     /** 屏一开小画面就浮出来;用户关掉后只剩小按钮,任务照常在跑。 */
     @Test fun smallWindowCanBeClosedForThisTask() = runTest {
         val open = MutableStateFlow(false)

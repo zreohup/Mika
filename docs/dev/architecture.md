@@ -255,6 +255,8 @@
 
 不同对话的任务可以同时进行,每个任务一块虚拟屏(`app/task/ParallelCapability.kt`):需要安卓 14 及以上、打开速度开关「不同对话同时进行」(默认关),上限 1–3(默认 2);低内存设备或第二块屏建失败过时只允许 1 个。真正独占的是同一个 App、主屏接管和剪贴板,由 `ResourceScheduler`(`app/task/ResourceScheduler.kt`)统一协调:同一个 App 同时只归一个任务,接管排队,剪贴板加锁,网页标签页有总预算。
 
+**等别的任务放开 App**:打开一个正被另一个任务用着的 App 时,结果是 `app_in_use_by_other_task`,说明里告诉模型可以先做别的,或带上 `wait`(秒,1–180,`LaunchApp.MAX_WAIT_S`)再调一次 `phone_launch_app`。要不要等、等多久由模型按任务定,没有设置开关。带了 `wait` 又被占着时,工具经 `ScreenPort.awaitAppFree` 等:`AndroidScreen` 把「别的屏上没有它、占用登记里也没有别的任务占着」当作放开,交给 `ResourceScheduler.awaitApp`(经 `TaskCenter.awaitApp`)——它登记「谁在等哪个 App」,有任务放开 App(`releaseOwner`,任务结束时)当场叫醒等着的,别的屏上的 App 自己关掉没有通知,每秒再看一眼;放开了就再开一次,到时限仍被占着返回 `app_wait_timed_out`。开始等之前顺着「占着这个 App 的任务在等谁手里的 App」一路找,绕回自己就是互相等(两个、三个任务成圈都一样),当场不等、返回 `app_wait_would_deadlock`(查与登记在同一把锁里,两个任务同时开始等时后来的那个看得见先来的;先来的照样等着,后来的不等、做完收尾放掉手里的 App,先来的就等到了)。等的这段时间任务仍是 `Running`,进展是 `RunProgress.WaitingForApp`(对话页、通知、胶囊都写「等另一个任务用完某 App」),不是暂停,也不算「要你处理」;等完放回原来那句。这和对话页交给服务的任务排队(并行关着时,别处的任务先开始了,新任务排在它后面、收尾后开始,消息下面写「等前一个任务做完再开始」)是两层:那是整个任务排在别的任务后面才开始,一次只跑一个,不会争 App;这里是并行时已经在跑的任务中途等一个 App。
+
 ## 9. 经验回放
 
 成功路线可记录下来,同类任务直接回放、每步轻量核对、不调模型,对不上就交还模型(`core/replay/`,回放的动作以 `Origin.Replay` 经唯一入口执行)。路线只从办成的运行里记录(`LearnGate`,`TaskRun.settleOutcome` 判过结局后从落盘的运行事件里取,`RouteRecorder` 只管路线本身记不记得下);回放走完、这次又算办成的,路线成功计数加一(`RouteReplay.noteResult`)。速度开关「照着上次的做法做」默认开:旧设置由 `FeatureFlags` 升级一次(`speed_defaults_applied_v3`),之后用户关掉就保持关闭。
