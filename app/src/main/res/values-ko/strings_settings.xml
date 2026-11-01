@@ -44,7 +44,7 @@
     <string name="settings_allowed">허용됨</string>
     <string name="settings_task_notifs">작업 알림</string>
     <string name="settings_keep_on">화면 켜 두기</string>
-    <string name="settings_keep_on_sub">작업이 실행되는 동안 화면이 켜져 있고, 끝나면 원래대로 돌아가요</string>
+    <string name="settings_keep_on_sub">작업이 실행되는 동안 화면이 켜져 있고(사용하지 않을 때는 평소처럼 어두워져요), 끝나면 원래대로 돌아가요</string>
     <string name="settings_mute">사용 중인 앱 음소거</string>
     <string name="settings_mute_sub">Mika가 쓰는 앱은 소리가 나지 않고, 내가 직접 처리하면 소리가 돌아와요</string>
     <string name="settings_pace">조작 속도</string>

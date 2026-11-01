@@ -44,7 +44,7 @@
     <string name="settings_allowed">已允许</string>
     <string name="settings_task_notifs">任务通知</string>
     <string name="settings_keep_on">屏幕保持常亮</string>
-    <string name="settings_keep_on_sub">任务进行时屏幕不熄灭,结束后恢复</string>
+    <string name="settings_keep_on_sub">任务进行时屏幕不熄灭(没在用时照常变暗),结束后恢复</string>
     <string name="settings_mute">被操作的 App 静音</string>
     <string name="settings_mute_sub">Mika 操作的 App 不出声,你接手时恢复声音</string>
     <string name="settings_pace">操作节奏</string>

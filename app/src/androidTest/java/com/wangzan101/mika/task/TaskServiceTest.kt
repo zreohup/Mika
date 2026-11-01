@@ -225,12 +225,13 @@ class TaskServiceTest {
         val line = mikaScreenLock()
         assertNotNull("Mika holds no screen wake lock while running", line)
         // 有的系统在类型前加锁对象编号(mLock:<id>),只认类型字样
-        assertTrue(line!!, "SCREEN_BRIGHT_WAKE_LOCK" in line)
+        // 只保持亮屏、允许系统调暗,不锁在全亮
+        assertTrue(line!!, "SCREEN_DIM_WAKE_LOCK" in line)
         assertFalse(line, "DISABLED" in line)
         val summary = sh("dumpsys power").lines().map { it.trim() }.first { it.startsWith("mWakeLockSummary=") }
-        // 摘要是位掩码(0x..),AOSP 的 WAKE_LOCK_SCREEN_BRIGHT = 1 shl 1;部分版本打印成文字
+        // 摘要是位掩码(0x..),AOSP 的 WAKE_LOCK_SCREEN_DIM = 1 shl 2;部分版本打印成文字
         val bits = Regex("0x([0-9a-fA-F]+)").find(summary)?.groupValues?.get(1)?.toInt(16)
-        assertTrue(summary, if (bits != null) bits and (1 shl 1) != 0 else "SCREEN_BRIGHT" in summary)
+        assertTrue(summary, if (bits != null) bits and (1 shl 2) != 0 else "SCREEN_DIM" in summary)
 
         finishAndAwait()
         val released = pollUntil(3_000) { if (mikaScreenLock() == null) true else null }
