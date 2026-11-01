@@ -122,8 +122,11 @@ const STRINGS = {
   errDeviceSelection: ["请连接手机，或从在线设备中选择一台。", "Connect a phone or choose an online device."],
   errDevicePinned: ["这个任务台已选择另一台手机，请重新读取。", "This desk already uses another phone. Refresh its state."],
   errAdb: ["无法读取所选手机，请检查 ADB 连接。", "Cannot read the selected phone. Check its ADB connection."],
-  errAdbUnavailable: ["找不到 adb，请先安装 Android platform-tools。", "adb is not available. Install Android platform-tools."],
+  errAdbUnavailable: ["找不到可运行的 adb，请先安装 Android platform-tools，或检查 --adb 指定的路径。", "adb was not found or cannot be run. Install Android platform-tools or check the --adb path."],
+  errConnectionInfo: ["无法读取 Mika 的连接信息。请解锁手机，打开一次 Mika，然后重新连接。", "Could not read Mika’s connection information. Unlock the phone, open Mika once, then connect again."],
   errDeviceOffline: ["这台手机已离线，重连后会自动更新。", "This phone is offline. Updates resume after reconnection."],
+  errDeviceUnauthorized: ["手机还没授权这台电脑。请解锁手机，允许 USB 调试，任务台会自动重试。", "The phone hasn’t authorized this computer. Unlock it and allow USB debugging; the desk retries by itself."],
+  errDeviceReconnect: ["这台手机处于离线状态。请重新插拔数据线，或在手机上重新打开 USB 调试，任务台会自动重试。", "This phone is offline. Reconnect the cable or turn USB debugging off and on; the desk retries by itself."],
   errStale: ["手机已重启，请重新运行 mika connect。", "The phone restarted. Run mika connect again."],
   errConnection: ["未能读取手机回复，任务台会自动重连。", "No reply from the phone. The desk will reconnect."],
   errDeskOffline: ["无法读取本机任务台，请检查它是否仍在运行。", "Cannot reach the local desk. Check that it is running."],
@@ -768,11 +771,17 @@ const errorNames = {
   adb_unavailable: "errAdbUnavailable",
   device_offline: "errDeviceOffline",
   stale_connection: "errStale",
+  connection_info: "errConnectionInfo",
   connection: "errConnection",
   desk_offline: "errDeskOffline",
   outcome_unknown: "errOutcomeUnknown",
   conflict: "errConflict"
 };
+// device_offline carries the phone's ADB state; any other state keeps the generic text.
+const deviceStates = new Map([
+  ["unauthorized", "errDeviceUnauthorized"],
+  ["offline", "errDeviceReconnect"]
+]);
 function connectionState(phase, labelKey) {
   const d = $("connection-details");
   if (d.dataset.phase !== phase) {
@@ -815,7 +824,8 @@ function updateDevice(next) {
 
 function showProblem(e) {
   if (e.code === "outcome_unknown") writeWarning = t("errOutcomeUnknown");
-  const detail = errorNames[e.code] ? t(errorNames[e.code]) : e.message || t("errFallback");
+  const key = (e.code === "device_offline" && deviceStates.get(e.state)) || errorNames[e.code];
+  const detail = key ? t(key) : e.message || t("errFallback");
   // A phone rejecting an outdated action is still a connected phone.
   if (e.http_status === 409 && e.code !== "device_selection" && e.code !== "device_pinned" && online) {
     message("notice", detail);

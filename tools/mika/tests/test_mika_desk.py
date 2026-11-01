@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 from urllib.parse import urlsplit
@@ -175,7 +176,8 @@ class DeskTest(unittest.TestCase):
         online = [{"device": "phone-a", "state": "device"}, {"device": "phone-b", "state": "device"},
                   {"device": "other", "state": "offline"}]
         with patch.dict(os.environ, {"ANDROID_SERIAL": ""}), mika_desk.Desk(args) as server:
-            with patch.object(mika_desk.Adb, "devices", return_value=online) as listing:
+            with patch.object(mika_desk.Adb, "start_server"), \
+                    patch.object(mika_desk.Adb, "devices", return_value=online) as listing:
                 for choice in [None, "other", "unknown"]:
                     with self.assertRaises(mika_desk.CliError) as caught:
                         server.pin_target(choice)
@@ -188,6 +190,30 @@ class DeskTest(unittest.TestCase):
                     server.pin_target("phone-a")
                 self.assertEqual("device_pinned", caught.exception.code)
                 self.assertEqual("phone-b", args.device)
+
+    def test_adb_server_starts_once_and_a_lone_unready_phone_reports_its_state(self):
+        with patch.object(sys, "path", [str(SCRIPT.parent), *sys.path]):
+            import mika_desk
+        args = Namespace(url=None, device=None, adb="adb")
+        with patch.dict(os.environ, {"ANDROID_SERIAL": ""}), \
+                patch.object(mika_desk.Adb, "start_server") as start, \
+                patch.object(mika_desk.Adb, "devices", return_value=[{"device": "phone-a", "state": "unauthorized"}]), \
+                mika_desk.Desk(args) as server:
+            worker = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+            worker.start()
+            try:
+                url = urlsplit(server.origin + "/#" + server.key)
+                results = [request(url, {"action": "overview"}) for _ in range(2)]
+            finally:
+                server.shutdown()
+                worker.join(timeout=2)
+        self.assertEqual(1, start.call_count)
+        for code, body in results:
+            self.assertEqual(502, code)
+            self.assertEqual("device_offline", body["error"]["code"])
+            self.assertEqual("unauthorized", body["error"]["state"])
+            self.assertIn("USB debugging prompt", body["error"]["message"])
+        self.assertFalse(args.device)
 
     def test_error_messages_redact_the_phone_token(self):
         with api(lambda *_: (401, {"error": {"message": "echo " + TOKEN}}, {})) as phone, self.launch(phone) as url:

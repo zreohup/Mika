@@ -11,7 +11,7 @@ import sys
 import threading
 import webbrowser
 
-from mika_cli import Adb, CliError, connection, execute, recent_tasks, redact
+from mika_cli import Adb, CliError, connection, device_state_error, execute, recent_tasks, redact
 
 
 ASSETS = {
@@ -51,9 +51,18 @@ class Desk(ThreadingHTTPServer):
         if not args.url and not args.device:
             args.device = os.environ.get("ANDROID_SERIAL")
         self.lock = threading.Lock()
+        self.adb_started = False
         self.key = secrets.token_urlsafe(32)
         self.host = f"127.0.0.1:{self.server_port}"
         self.origin = "http://" + self.host
+
+    def list_devices(self):
+        # Caller holds the lock. The ADB server is started once, before the first listing.
+        adb = Adb(self.args.adb)
+        if not self.adb_started:
+            adb.start_server()
+            self.adb_started = True
+        return adb.devices()
 
     def pin_target(self, choice):
         # A session owns one target even across disconnects and concurrent tabs.
@@ -62,9 +71,13 @@ class Desk(ThreadingHTTPServer):
                 if choice is not None and choice != self.args.device:
                     raise CliError("device_pinned", "The desk already has a target.", http_status=409)
                 return
-            online = [d["device"] for d in Adb(self.args.adb).devices() if d["state"] == "device"]
+            devices = self.list_devices()
+            online = [d["device"] for d in devices if d["state"] == "device"]
             if choice is None and len(online) == 1:
                 choice = online[0]
+            elif choice is None and len(devices) == 1:
+                # The only phone is not ready; name its state as the CLI does.
+                raise device_state_error(devices[0]["state"])
             if choice not in online:
                 raise CliError("device_selection", "Choose an online phone.", devices=online, http_status=409)
             self.args.device = choice
