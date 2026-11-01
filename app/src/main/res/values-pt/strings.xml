@@ -47,4 +47,18 @@
     <string name="model_reasoning_high">Alto</string>
     <string name="model_reasoning_xhigh">Muito alto</string>
     <string name="model_reasoning_max">Máximo</string>
+    <string name="speech_doubao_provider">Volcengine · reconhecimento de voz</string>
+    <string name="speech_doubao_model">Doubao ASR em streaming 2.0</string>
+    <string name="speech_doubao_note">Transcreve enquanto você fala, com uma conta própria do serviço de voz.</string>
+    <string name="speech_doubao_missing">Configure as credenciais de voz do Doubao em Configurações › Modelo › Fala para texto.</string>
+    <string name="speech_doubao_new">Console novo · API Key</string>
+    <string name="speech_doubao_legacy">Console antigo · App ID + Access Token</string>
+    <string name="speech_doubao_enter_app">App ID do aplicativo de voz</string>
+    <string name="speech_doubao_enter_key">Digite uma credencial do serviço de voz</string>
+    <string name="speech_doubao_duration">ASR 2.0 · cobrança por duração</string>
+    <string name="speech_doubao_concurrent">ASR 2.0 · plano por concorrência</string>
+    <string name="speech_doubao_privacy">Salvar não faz nenhuma solicitação de rede. Ao segurar o microfone, o áudio é enviado à Volcengine e pode gerar cobrança. Ative antes o ASR 2.0 do plano escolhido. As credenciais ficam criptografadas neste aparelho. O acesso salvo ainda não foi testado.</string>
+    <string name="speech_doubao_save">Salvar e usar · não testado</string>
+    <string name="speech_doubao_remove">Remover as credenciais de voz salvas</string>
+    <string name="speech_doubao_save_failed">Não foi possível criptografar e salvar as credenciais de voz. Tente de novo.</string>
 </resources>

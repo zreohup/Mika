@@ -51,7 +51,7 @@
     <string name="speech_doubao_provider">Volcengine · speech recognition</string>
     <string name="speech_doubao_model">Doubao streaming ASR 2.0</string>
     <string name="speech_doubao_note">Live transcription with a separate speech service account.</string>
-    <string name="speech_doubao_missing">Configure the Doubao speech credentials in Settings › Models › Speech to text.</string>
+    <string name="speech_doubao_missing">Configure the Doubao speech credentials in Settings › Model › Speech to text.</string>
     <string name="speech_doubao_new">New console · API Key</string>
     <string name="speech_doubao_legacy">Legacy console · App ID + Access Token</string>
     <string name="speech_doubao_enter_app">Speech application ID</string>

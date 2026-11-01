@@ -33,7 +33,7 @@
 ./gradlew :app:assembleDebug
 ```
 
-本次开发环境没有 Android SDK，没有接受新的 SDK 协议或改动现有应用安装。已通过隔离 JDK 17 / Kotlin 2.1.20 的 JVM 子集验证，平台相关类型使用明确标记的编译声明；这不等于完整 Android 构建、Compose UI 或 Android Keystore 真机测试通过。真实火山账号权限、服务端兼容性、收费、延迟、准确率和真实麦克风仍待有权限的维护者验证。
+真实火山账号的权限、收费、延迟和准确率需要有账号的人验证；没有账号时只能确认设置页、保存与删除凭据和失败提示。
 
 ## 资料与实现来源
 
@@ -41,5 +41,3 @@
 
 - [大模型流式语音识别 API（二进制帧）](https://docs.volcengine.com/docs/doubao-voice/large-model-streaming-automatic-speech-recognition-api-1?lang=zh)
 - [实时语音识别（当前参数与 2.0 资源）](https://docs.volcengine.com/docs/doubao-voice/bidirectional-streaming-automatic-speech-recognition-websocket?lang=zh)
-
-产品配置分离参考[闪电说公开接入教程](https://shandianshuo.cn/docs/faq/cloud-speech-model-new)和只读界面。使用 Codex 与 REA skill 核对目标及许可边界，REA 实际检查了安装包元数据；没有反编译或复制闪电说代码。这里的协议、录音适配、状态与测试均为针对 Mika 独立编写，随项目 Apache-2.0 许可贡献。
