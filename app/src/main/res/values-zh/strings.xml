@@ -47,4 +47,18 @@
     <string name="model_reasoning_high">高</string>
     <string name="model_reasoning_xhigh">很高</string>
     <string name="model_reasoning_max">最高</string>
+    <string name="speech_doubao_provider">火山引擎 · 语音识别</string>
+    <string name="speech_doubao_model">豆包流式语音识别模型 2.0</string>
+    <string name="speech_doubao_note">边说边转写，使用独立的语音服务凭据。</string>
+    <string name="speech_doubao_missing">请在设置 › 模型 › 语音转文字配置豆包语音凭据。</string>
+    <string name="speech_doubao_new">新版控制台 · API Key</string>
+    <string name="speech_doubao_legacy">旧版控制台 · App ID + Access Token</string>
+    <string name="speech_doubao_enter_app">语音应用 App ID</string>
+    <string name="speech_doubao_enter_key">填写语音服务凭据</string>
+    <string name="speech_doubao_duration">2.0 小时版</string>
+    <string name="speech_doubao_concurrent">2.0 并发版</string>
+    <string name="speech_doubao_privacy">保存不发起网络请求。按住麦克风时音频会发送到火山引擎，可能计费；请先开通所选计费方式的语音识别 2.0。凭据在本机加密保存，保存后尚未验证服务权限。</string>
+    <string name="speech_doubao_save">保存并使用 · 尚未验证</string>
+    <string name="speech_doubao_remove">删除已保存的语音凭据</string>
+    <string name="speech_doubao_save_failed">无法加密保存语音凭据，请重试。</string>
 </resources>
