@@ -147,9 +147,13 @@ class Adb:
         return result.stdout.strip()
 
     def devices(self):
-        return [{"device": columns[0], "state": columns[1]}
-                for line in self.run("devices").splitlines()
-                if len(columns := line.split()) >= 2 and columns[0] != "List"]
+        devices = []
+        for line in self.run("devices").splitlines():
+            # ADB uses a tab after the serial. Wireless service names can contain spaces.
+            columns = line.split("\t", 1) if "\t" in line else line.split(maxsplit=1)
+            if len(columns) == 2 and columns[0] != "List" and columns[1].strip():
+                devices.append({"device": columns[0], "state": columns[1].split()[0]})
+        return devices
 
     def select(self):
         if not self.device:
