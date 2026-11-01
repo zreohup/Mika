@@ -5,6 +5,8 @@
     <string name="phone_later">Nanti saja</string>
     <string name="phone_bar_title">Kontrol ponsel</string>
     <string name="phone_skip_note">Anda boleh melewatinya dulu dan hanya memakai web, berkas, dan obrolan; Mika akan mengingatkan saat pertama kali butuh aplikasi.</string>
+    <string name="phone_unavailable">Lingkungan ini tidak bisa mengoperasikan aplikasi di ponsel Anda; obrolan, web, berkas, dan perhitungan tetap bisa dipakai seperti biasa.</string>
+    <string name="phone_unavailable_reason">Kontrol ponsel butuh Opsi developer dan Proses debug nirkabel dari Android, dan keduanya tidak ada di sini.</string>
     <string name="phone_step_dev">Aktifkan Opsi developer</string>
     <string name="phone_step_dev_body">Buka “Tentang ponsel” di Pengaturan dan ketuk “Nomor build” 7 kali sampai muncul “Anda kini seorang developer”. Di beberapa ponsel “Nomor build” ada di bawah “Informasi software”.</string>
     <string name="phone_step_dev_action">Buka Tentang ponsel</string>

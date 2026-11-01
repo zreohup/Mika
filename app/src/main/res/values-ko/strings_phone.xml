@@ -5,6 +5,8 @@
     <string name="phone_later">나중에</string>
     <string name="phone_bar_title">휴대전화 제어</string>
     <string name="phone_skip_note">지금은 건너뛰고 웹, 파일, 채팅만 써도 돼요. Mika가 처음 앱이 필요할 때 다시 알려 드릴게요.</string>
+    <string name="phone_unavailable">이 환경에서는 휴대전화의 앱을 조작할 수 없어요. 채팅, 웹, 파일, 계산은 평소처럼 쓸 수 있어요.</string>
+    <string name="phone_unavailable_reason">휴대전화 앱을 조작하려면 Android의 개발자 옵션과 무선 디버깅이 필요한데, 여기에는 둘 다 없어요.</string>
     <string name="phone_step_dev">개발자 옵션 켜기</string>
     <string name="phone_step_dev_body">설정에서 “휴대전화 정보”를 열고 “빌드 번호”를 7번 눌러 “개발자가 되었습니다”가 나올 때까지 누르세요. 일부 휴대전화에서는 “빌드 번호”가 “소프트웨어 정보”에 있어요.</string>
     <string name="phone_step_dev_action">휴대전화 정보 열기</string>

@@ -43,6 +43,7 @@
 
     <string name="selfcheck_advice_too_old">Эта система старше Android 12, поэтому управление телефоном недоступно. Чат, сайты и песочница работают.</string>
     <string name="selfcheck_advice_no_wireless">В этой системе нет отладки по Wi-Fi. Управление телефоном можно запустить с компьютера по USB.</string>
+    <string name="selfcheck_advice_phone_unavailable">В этой среде нельзя управлять приложениями на телефоне (нет раздела «Для разработчиков» и отладки по Wi-Fi); чат, сайты, файлы и вычисления работают как обычно.</string>
     <string name="selfcheck_advice_a11y_off">Специальные возможности выключены. Включите их для Mika в разделе «Настройки» › «Управление телефоном».</string>
     <string name="selfcheck_advice_a11y_restart">Специальные возможности включены, но не работают. Выключите и снова включите их для Mika в системных настройках.</string>
     <string name="selfcheck_advice_notifications">Уведомления заблокированы, поэтому вы не увидите ход задач и сообщения «Нужны вы».</string>

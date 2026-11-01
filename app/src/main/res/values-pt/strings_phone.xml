@@ -5,6 +5,8 @@
     <string name="phone_later">Agora não</string>
     <string name="phone_bar_title">Controle do celular</string>
     <string name="phone_skip_note">Você pode pular isso por enquanto e usar só web, arquivos e conversa; o Mika lembra você na primeira vez que precisar de um app.</string>
+    <string name="phone_unavailable">Este ambiente não consegue usar os apps do seu celular; conversa, web, arquivos e cálculos funcionam normalmente.</string>
+    <string name="phone_unavailable_reason">O controle do celular precisa das Opções do desenvolvedor e da Depuração wireless do Android, e nenhuma das duas está disponível aqui.</string>
     <string name="phone_step_dev">Ativar Opções do desenvolvedor</string>
     <string name="phone_step_dev_body">Abra “Sobre o telefone” em Configurações e toque 7 vezes em “Número da versão” até aparecer “Você agora é um desenvolvedor”. Em alguns celulares, “Número da versão” fica em “Informações do software”.</string>
     <string name="phone_step_dev_action">Abrir Sobre o telefone</string>

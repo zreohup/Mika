@@ -43,6 +43,7 @@
 
     <string name="selfcheck_advice_too_old">Sistem ini lebih lama dari Android 12, jadi kontrol ponsel tidak tersedia. Obrolan, web, dan sandbox tetap berfungsi.</string>
     <string name="selfcheck_advice_no_wireless">Sistem ini tidak punya Proses debug nirkabel. Anda bisa memulai kontrol ponsel dari komputer lewat USB.</string>
+    <string name="selfcheck_advice_phone_unavailable">Lingkungan ini tidak bisa mengoperasikan aplikasi di ponsel Anda (tidak ada Opsi developer maupun Proses debug nirkabel); obrolan, web, berkas, dan perhitungan tetap bisa dipakai seperti biasa.</string>
     <string name="selfcheck_advice_a11y_off">Aksesibilitas nonaktif. Aktifkan aksesibilitas Mika di Pengaturan › Kontrol ponsel.</string>
     <string name="selfcheck_advice_a11y_restart">Aksesibilitas aktif tetapi tidak berjalan. Matikan lalu aktifkan lagi aksesibilitas Mika di setelan sistem.</string>
     <string name="selfcheck_advice_notifications">Notifikasi diblokir, jadi Anda tidak akan melihat kemajuan tugas atau peringatan “perlu Anda”.</string>

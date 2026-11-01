@@ -38,6 +38,7 @@ import com.wangzan101.mika.core.selfcheck.DeviceFacts
 import com.wangzan101.mika.core.selfcheck.SelfCheck
 import com.wangzan101.mika.core.selfcheck.SelfCheckPort
 import com.wangzan101.mika.core.shell.BuiltinShellStatus
+import com.wangzan101.mika.core.shell.PhoneSetupFlow
 import com.wangzan101.mika.core.uistate.ActionResult
 import com.wangzan101.mika.core.uistate.ScreenSnapshot
 import com.wangzan101.mika.core.uistate.UiElement
@@ -85,11 +86,16 @@ class AndroidSelfCheck(context: Context, private val status: () -> SystemStatus)
     override suspend fun facts(): DeviceFacts = withContext(Dispatchers.IO) {
         val mem = ActivityManager.MemoryInfo().also { app.getSystemService(ActivityManager::class.java).getMemoryInfo(it) }
         val m = metrics()
+        val st = status()
+        val devPageMissing = DeveloperSettings.developerOptionsPageMissing(app.packageManager)
+        val wirelessMissing = DeveloperSettings.wirelessDebuggingMissing(app.contentResolver)
         DeviceFacts(
             Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE, Build.VERSION.SDK_INT, Build.SUPPORTED_ABIS.toList(),
             mem.totalMem, m.widthPixels, m.heightPixels,
-            wirelessDebugging = !DeveloperSettings.wirelessDebuggingMissing(app.contentResolver),
+            wirelessDebugging = !wirelessMissing,
             appVersion = BuildConfig.VERSION_NAME, appBuild = BuildConfig.GIT_HASH,
+            developerOptionsPage = !devPageMissing,
+            phoneControlUnavailable = PhoneSetupFlow.unavailable(devPageMissing, wirelessMissing, st.builtinShell, st.helperRestart),
         )
     }
 

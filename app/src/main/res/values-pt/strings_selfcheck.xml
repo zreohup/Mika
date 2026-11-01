@@ -43,6 +43,7 @@
 
     <string name="selfcheck_advice_too_old">Este sistema é anterior ao Android 12, então o controle do celular não está disponível. Conversa, web e sandbox continuam funcionando.</string>
     <string name="selfcheck_advice_no_wireless">Este sistema não tem Depuração wireless. Você pode iniciar o controle do celular por um computador via USB.</string>
+    <string name="selfcheck_advice_phone_unavailable">Este ambiente não consegue usar os apps do seu celular (sem Opções do desenvolvedor nem Depuração wireless); conversa, web, arquivos e cálculos funcionam normalmente.</string>
     <string name="selfcheck_advice_a11y_off">A acessibilidade está desativada. Ative a acessibilidade do Mika em Configurações › Controle do celular.</string>
     <string name="selfcheck_advice_a11y_restart">A acessibilidade está ativada, mas não está em execução. Desative e ative de novo a acessibilidade do Mika nas configurações do sistema.</string>
     <string name="selfcheck_advice_notifications">As notificações estão bloqueadas, então você não verá o andamento das tarefas nem os alertas de “precisa de você”.</string>

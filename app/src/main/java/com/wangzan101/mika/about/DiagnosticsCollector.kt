@@ -49,7 +49,7 @@ fun SystemStatus.setupInputs(
     accessibilitySkipped = accessibilitySkipped, restrictedSettings = restrictedSettings,
     confirmed = confirmed, revisit = revisit,
     wirelessMissing = wirelessDebuggingMissing, stalledMs = stalledMs, usbAsked = usbAsked,
-    restart = helperRestart,
+    restart = helperRestart, developerSettingsMissing = developerSettingsMissing,
 )
 
 /**

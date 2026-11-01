@@ -43,6 +43,7 @@
 
     <string name="selfcheck_advice_too_old">このシステムは Android 12 より古いため、スマホの操作は使えません。チャット、ウェブ、サンドボックスは使えます。</string>
     <string name="selfcheck_advice_no_wireless">このシステムにはワイヤレス デバッグがありません。代わりに、USB 経由でパソコンからスマホの操作を開始できます。</string>
+    <string name="selfcheck_advice_phone_unavailable">この環境ではスマホのアプリを操作できません（開発者向けオプションとワイヤレス デバッグがありません）。チャット、ウェブ、ファイル、計算はいつもどおり使えます。</string>
     <string name="selfcheck_advice_a11y_off">ユーザー補助がオフです。「設定 › スマホの操作」で Mika のユーザー補助をオンにしてください。</string>
     <string name="selfcheck_advice_a11y_restart">ユーザー補助はオンですが、動作していません。システム設定で Mika のユーザー補助をいったんオフにして、もう一度オンにしてください。</string>
     <string name="selfcheck_advice_notifications">通知がブロックされているため、タスクの進行状況や「対応が必要」の通知が表示されません。</string>

@@ -5,6 +5,8 @@
     <string name="phone_later">Ahora no</string>
     <string name="phone_bar_title">Control del teléfono</string>
     <string name="phone_skip_note">Puedes omitir esto por ahora y usar solo la web, los archivos y el chat; Mika te lo recordará la primera vez que necesite una app.</string>
+    <string name="phone_unavailable">Este entorno no puede usar las apps de tu teléfono; el chat, la web, los archivos y los cálculos funcionan como siempre.</string>
+    <string name="phone_unavailable_reason">El control del teléfono necesita las Opciones de desarrollador y la Depuración inalámbrica de Android, y aquí no hay ninguna de las dos.</string>
     <string name="phone_step_dev">Activa las Opciones de desarrollador</string>
     <string name="phone_step_dev_body">Abre “Acerca del teléfono” en Ajustes y toca 7 veces “Número de compilación” hasta que veas “Ahora eres desarrollador”. En algunos teléfonos, “Número de compilación” está en “Información del software”.</string>
     <string name="phone_step_dev_action">Abrir Acerca del teléfono</string>

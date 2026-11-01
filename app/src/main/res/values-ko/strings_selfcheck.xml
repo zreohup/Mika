@@ -43,6 +43,7 @@
 
     <string name="selfcheck_advice_too_old">이 시스템은 Android 12보다 낮아서 휴대전화 제어를 쓸 수 없어요. 채팅, 웹, 샌드박스는 계속 쓸 수 있어요.</string>
     <string name="selfcheck_advice_no_wireless">이 시스템에는 무선 디버깅이 없어요. 대신 컴퓨터에서 USB로 휴대전화 제어를 시작할 수 있어요.</string>
+    <string name="selfcheck_advice_phone_unavailable">이 환경에서는 휴대전화의 앱을 조작할 수 없어요(개발자 옵션과 무선 디버깅이 없음). 채팅, 웹, 파일, 계산은 평소처럼 쓸 수 있어요.</string>
     <string name="selfcheck_advice_a11y_off">접근성이 꺼져 있어요. 설정 › 휴대전화 제어에서 Mika의 접근성을 켜세요.</string>
     <string name="selfcheck_advice_a11y_restart">접근성이 켜져 있지만 실행 중이 아니에요. 시스템 설정에서 Mika의 접근성을 껐다가 다시 켜세요.</string>
     <string name="selfcheck_advice_notifications">알림이 차단되어 있어서 작업 진행 상황이나 “확인 필요” 알림을 볼 수 없어요.</string>

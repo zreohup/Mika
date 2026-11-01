@@ -5,6 +5,8 @@
     <string name="phone_later">あとで</string>
     <string name="phone_bar_title">スマホの操作</string>
     <string name="phone_skip_note">今はスキップして、ウェブ、ファイル、チャットだけ使うこともできます。最初にアプリが必要になったとき、Mika がお知らせします。</string>
+    <string name="phone_unavailable">この環境ではスマホのアプリを操作できません。チャット、ウェブ、ファイル、計算はいつもどおり使えます。</string>
+    <string name="phone_unavailable_reason">スマホのアプリの操作には Android の「開発者向けオプション」と「ワイヤレス デバッグ」が必要ですが、ここにはどちらもありません。</string>
     <string name="phone_step_dev">開発者向けオプションをオンにする</string>
     <string name="phone_step_dev_body">設定の「デバイス情報」を開き、「ビルド番号」を 7 回タップして「これでデベロッパーになりました」と表示されるまで続けます。機種によっては、「ビルド番号」は「ソフトウェア情報」の中にあります。</string>
     <string name="phone_step_dev_action">デバイス情報を開く</string>
