@@ -45,9 +45,11 @@ object ModelAccessErrors {
     )
 
     /**
-     * 说「这个模型不能走这个接口」的:一家服务商把模型按接口形状分开放(如某家中转站把 Claude 系只挂在 `/messages`,
-     * 在 OpenAI 兼容的那条路上调用它一律 400 「must be called via /provider/v1/messages」),换成 OpenAI 形以外的接口、
+     * 说「这个模型不能走这个接口」的:一家服务商把模型按接口形状分开放(如某一系模型只挂在 `/messages`,
+     * 在 OpenAI 兼容的那条路上调用它一律 400 「must be called via /provider/v1/messages」),换一种接口类型、
      * 或换下面一个模型才通。这不是 Key、地址或网络的问题,当这个模型用不了,接着试下一个。
+     * 只在报错说的是模型时才算(见 [aboutTheModel]):「Your API key is not supported for this endpoint」这类说的是 Key,
+     * 照旧交给调用方按状态码处理(403 是 Key 的问题,整次保存照旧挡住)。
      */
     private val ENDPOINT_MISMATCH = listOf(
         "unsupported_model",
@@ -77,12 +79,16 @@ object ModelAccessErrors {
         if (status != 400 && status != 403 && status != 404) return null
         return when {
             TOOLS_UNSUPPORTED.any { it in lower } -> ModelError.ToolsUnsupported(model)
-            ENDPOINT_MISMATCH.any { it in lower } -> ModelError.ModelNotAvailable(model, detail(body))
+            ENDPOINT_MISMATCH.any { it in lower } && aboutTheModel(lower, body, model) -> ModelError.ModelNotAvailable(model, detail(body))
             NOT_AVAILABLE.any { it in lower } || MODEL_RETIRED.containsMatchIn(lower) -> ModelError.ModelNotAvailable(model, detail(body))
             status != 404 && NOT_FOUND.any { it in lower } -> ModelError.ModelNotFound(model, jsonDetail(body))
             else -> null
         }
     }
+
+    /** 报错说的是模型本身:提到 model(含 `unsupported_model`、`"param":"model"`),或原话里直接点了请求的模型名。 */
+    private fun aboutTheModel(lower: String, body: String, model: String): Boolean =
+        "model" in lower || (model.isNotBlank() && model.lowercase() in (said(body) ?: body).lowercase())
 
     /** 服务端的原话:JSON 里的([said]),不是 JSON 就是整段;太长的截短([clip])。 */
     internal fun detail(body: String): String = clip(said(body) ?: body)

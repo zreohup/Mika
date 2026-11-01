@@ -104,9 +104,12 @@ class ModelAccessErrorsTest {
         // 只说错误代码的
         notAvailable(400, """{"error":{"type":"invalid_request_error","param":"model","code":"unsupported_model"}}""")
         notAvailable(400, """{"error":{"message":"This model is only supported in v1/responses and not in v1/chat/completions.","param":"model"}}""")
-        notAvailable(400, """{"error":{"message":"gpt-4o is not supported for this endpoint"}}""")
+        assertTrue(ModelAccessErrors.of(400, """{"error":{"message":"gpt-4o is not supported for this endpoint"}}""", "gpt-4o") is ModelError.ModelNotAvailable)
         // 请求本身不对的不认,交给调用方按状态码说
         assertNull(ModelAccessErrors.of(400, """{"error":{"message":"Invalid value for 'temperature': 3"}}""", "m"))
+        // 说的是 Key 不能用这个接口、不是模型:不认,403 照旧由调用方当 Key 的问题
+        assertNull(ModelAccessErrors.of(403, """{"error":{"message":"Your API key is not supported for this endpoint"}}""", "gpt-x"))
+        assertTrue(ModelHttp.openAiError(403, null, """{"error":{"message":"Your API key is not supported for this endpoint"}}""", "gpt-x") is ModelError.Auth)
     }
 
     /** Key、额度、请求本身不对的不认;401 一律不看。 */
