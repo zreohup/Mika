@@ -76,12 +76,6 @@ Turning remote access off in Mika closes the tunnel while preserving pairing. **
 
 Offline requests are not queued. `device_offline` means no device connection was available. `delivery_unknown` means a request may already have executed: reconnect and inspect task status; never automatically replay task creation, steering or unlock. Cancelling a wait cannot undo an action already performed. The CLI conservatively reports `outcome_unknown` for mutation responses with HTTP 5xx; it does not automatically retry them.
 
-## Upgrade from the earlier gateway prototype
-
-Back up the complete data volume and keep the old image/APK before upgrading. Protocol `mika-relay.v2` requires both the updated gateway and updated Mika. The gateway rejects v1 phones before WebSocket upgrade; a new phone stops with an update-required state if the peer rejects the protocol. Update both sides; there is no downgrade to the previous gateway-authenticated path.
-
-The device pairing and remote switch are preserved. Opening the old gateway state rewrites it to retain only the device hash, removing gateway PAT/OAuth records. The encrypted phone pairing is rewritten without its old `clientToken`. Existing gateway-issued tokens/configs stop working; copy the new config or phone token from Mika. The existing phone LAN token is unchanged. Rollback requires restoring the matching old gateway state and APK as well as the old image, while remote access is off.
-
 ## Web UI
 
 Go templates render one management page; embedded local CSS and a small progressive-enhancement script provide the layout and confirmation dialog. There is no Node build, framework, CDN or browser storage for credentials. Pairing and confirmation also work without JavaScript. All styles follow the App's semantic colors, type scale, grouped cards, spacing and button sizes from `app/ui/theme`, with system light/dark mode, visible keyboard focus and a narrow-screen layout.

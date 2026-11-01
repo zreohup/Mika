@@ -86,12 +86,6 @@ mika --url https://mika.example.com --token-file /path/to/token task list --limi
 
 `device_offline` 表示无可用通道，`delivery_unknown` 表示可能已经执行但结果丢失；应查询任务状态，不自动重发任务、插话或解锁。CLI 对写请求的 HTTP 5xx 保守报告 `outcome_unknown`。取消等待不能撤销已执行动作。离线不积压命令。
 
-## 从旧原型升级
-
-先一致备份数据卷、管理密钥、旧镜像和 APK。新版采用 `mika-relay.v2`：网关在升级 WebSocket 前拒绝 v1 手机；手机遇到协议不匹配时停止重试并提示更新。必须同时更新 App 和网关，不回退旧的网关鉴权路径。
-
-旧设备配对和远程开关保留；网关载入旧状态时仅保留设备摘要，移除旧 PAT/OAuth 记录；手机加密配对记录移除旧 `clientToken`。旧远程令牌不再可用，须在手机重新复制统一配置；手机原 LAN 令牌不变。回滚需关闭远程，同时恢复匹配的旧状态、镜像和 APK。
-
 ## 验证与运维
 
 ```sh

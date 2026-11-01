@@ -352,7 +352,7 @@ func TestCliMethodsQueryAndClientMetadataAreTransparent(t *testing.T) {
 	<-done
 }
 
-func TestOldPhoneProtocolIsRejectedBeforeUpgrade(t *testing.T) {
+func TestOtherPhoneProtocolIsRejectedBeforeUpgrade(t *testing.T) {
 	f := newFixture(t)
 	f.pair(t)
 	c, r, err := websocket.Dial(context.Background(), strings.Replace(f.server.URL, "http:", "ws:", 1)+"/device", &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer " + f.device}}, Subprotocols: []string{"mika-relay.v1"}})
@@ -360,7 +360,7 @@ func TestOldPhoneProtocolIsRejectedBeforeUpgrade(t *testing.T) {
 		c.CloseNow()
 	}
 	if err == nil || r == nil || r.StatusCode != 426 {
-		t.Fatal("v1 phone accepted without phone authentication")
+		t.Fatal("phone with another protocol version accepted")
 	}
 }
 

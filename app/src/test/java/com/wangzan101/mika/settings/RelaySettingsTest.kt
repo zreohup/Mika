@@ -24,16 +24,6 @@ class RelaySettingsTest {
         assertEquals(pairing().deviceToken, restored.pairing()!!.deviceToken)
     }
 
-    @Test fun legacyPairingDropsTheGatewayAccessTokenAndKeepsDeviceConnection() {
-        val cipher = AesGcmKeyCipher { key }
-        val file = tmp.root.resolve("remote-relay.bin")
-        file.writeBytes(cipher.encrypt("""{"gateway":"https://relay.example/","deviceToken":"${"d".repeat(43)}","clientToken":"${"c".repeat(43)}","enabled":true}""".toByteArray()))
-        val restored = settings()
-        assertTrue(restored.config.value.enabled)
-        assertEquals(pairing().deviceToken, restored.pairing()!!.deviceToken)
-        assertFalse(cipher.decrypt(file.readBytes()).toString(Charsets.UTF_8).contains("clientToken"))
-    }
-
     @Test fun deviceAccessOverTheGatewayIsOffByDefaultPersistsAndResetsOnRepair() {
         val s = settings(); s.save(pairing()); s.setEnabled(true)
         assertFalse(s.config.value.deviceAccess)

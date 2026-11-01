@@ -1,38 +1,12 @@
 package main
 
 import (
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 )
-
-func TestLegacyStoreRetainsOnlyDeviceIdentity(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "relay.json")
-	if err := os.WriteFile(path, []byte(`{"device_hash":"device-identity","client_hash":"old-access-hash","clients":{"a":"old-client"},"grants":{"b":"old-grant"}}`), 0600); err != nil {
-		t.Fatal(err)
-	}
-	s, err := openStore(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var stored map[string]any
-	if json.Unmarshal(b, &stored) != nil || len(stored) != 1 || s.view().DeviceHash != "device-identity" {
-		t.Fatal("legacy access records retained or pairing lost")
-	}
-	info, _ := os.Stat(path)
-	if info.Mode().Perm() != 0600 {
-		t.Fatal("state permissions changed")
-	}
-}
 
 func TestWebLanguagesAndCatalogCompleteness(t *testing.T) {
 	f := newFixture(t)

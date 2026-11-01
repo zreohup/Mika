@@ -24,14 +24,6 @@ class RelaySettings(private val dir: File, private val cipher: KeyCipher) {
     private val file = File(dir, "remote-relay.bin")
     private val mutable = MutableStateFlow(runCatching { read()?.let { config(it) } }.getOrNull() ?: RelayConfig())
     val config = mutable.asStateFlow()
-    init {
-        runCatching {
-            read()?.takeIf { "clientToken" in it }?.let { old ->
-                val next = config(old)
-                write(RelayPairing(string(old, "gateway"), string(old, "deviceToken")), next.enabled, false)
-            }
-        }.onFailure { mutable.value = RelayConfig() }
-    }
 
     @Synchronized fun pairing(): RelayPairing? = runCatching {
         val o = read() ?: return null

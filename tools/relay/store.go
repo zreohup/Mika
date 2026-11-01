@@ -34,10 +34,6 @@ func openStore(path string) (*store, error) {
 	if err = json.Unmarshal(b, &s.data); err != nil {
 		return nil, err
 	}
-	// Rewrite legacy state to remove the old gateway-owned PAT/OAuth records.
-	if err = s.update(func(*diskState) error { return nil }); err != nil {
-		return nil, err
-	}
 	return s, nil
 }
 func (s *store) view() diskState { s.mu.Lock(); defer s.mu.Unlock(); return s.data }

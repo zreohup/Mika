@@ -17,7 +17,7 @@ import (
 
 const maxBody = 1 << 20
 
-// v1 phones trusted gateway authentication. Never send transparent requests to them.
+// Both ends must speak the same tunnel protocol; a phone offering another version is refused before upgrade.
 const subprotocol = "mika-relay.v2"
 
 type frame struct {
@@ -258,7 +258,7 @@ func (g *gateway) deviceEndpoint(w http.ResponseWriter, r *http.Request) {
 		failure(w, 405, "method_not_allowed")
 		return
 	}
-	// Reject v1 before upgrading; those phones have no end-user authentication at this entry.
+	// Refuse other protocol versions before upgrading, so the phone can show an update-required state.
 	found := false
 	for _, p := range strings.Split(r.Header.Get("Sec-WebSocket-Protocol"), ",") {
 		found = found || strings.TrimSpace(p) == subprotocol
