@@ -238,8 +238,12 @@ data class ModelSetupUi(
     /** 还没有服务商时表单总是展开。 */
     val showForm: Boolean get() = formOpen || providers.isEmpty()
 
-    /** 在 [providerId] 里选 [role] 要先试调用(走 [ModelSetupViewModel.pickManual]):刚存下、没有一个模型试通过的那家选主模型。 */
-    fun probeBeforePick(role: ModelRole, providerId: String): Boolean = role == ModelRole.Main && providerId == pickToProbe
+    /**
+     * 在 [providerId] 里选 [role] 要先试调用(走 [ModelSetupViewModel.pickManual]):刚存下、没有一个模型试通过的那家,
+     * 或跳过测试存下、还没测过的那家([Provider.savedUntested],重开 App 后也算)选主模型。
+     */
+    fun probeBeforePick(role: ModelRole, providerId: String): Boolean = role == ModelRole.Main &&
+        (providerId == pickToProbe || providers.firstOrNull { it.id == providerId }?.savedUntested == true)
 
     /** 选好了主模型就能「下一步」。 */
     val canNext: Boolean get() = roles.main != null
@@ -267,9 +271,8 @@ data class ModelSetupUi(
      * 有列表的服务商,模型是从列表里选的,不算。
      */
     fun unverified(p: Provider): List<String> =
-        if (p.kind == ProviderConfig.Kind.ChatGpt || p.kind == ProviderConfig.Kind.Xai || p.models?.isEmpty() != true) emptyList()
-        else roles.referenced.mapNotNull { id -> configs.firstOrNull { it.id == id && it.providerId == p.id }?.model }
-            .distinct().filter { it !in p.verifiedModels }
+        roles.referenced.mapNotNull { id -> configs.firstOrNull { it.id == id && it.providerId == p.id }?.model }
+            .distinct().filter(p::untested)
 
     /**
      * 这家是跳过测试直接存下的(见 [ModelSetupViewModel.saveWithoutTest]):既没列过模型、也没有一个模型试通过过。
@@ -529,8 +532,8 @@ class ModelSetupViewModel(
      * 存下的这家带着 [Provider.savedUntested]:服务商页会说清它还没测过,并留着「重新测试」;
      * 没有定主模型时还设 [ModelSetupUi.pickToProbe],之后从列表里选主模型会先试调用一次(见 [ModelSetupUi.probeBeforePick])。
      *
-     * 手填了模型名([AddForm.typedModel])时,把它记为手填——列表里没有它、或这家列不出模型,刷新列表也不会丢——
-     * 并且还没有主模型就用它当主模型。**但这个模型同样没试调用过**,所以服务商页照样标「没测试过」,不是「已验证」。
+     * 手填了模型名([AddForm.typedModel])时,只把它记为手填——列表里没有它、或这家列不出模型,刷新列表也不会丢。
+     * 没测过的模型不自动当主模型:没有主模型时用户去选,选的时候先试调用,通了才用。
      *
      * 列表参数给的是空列表(「列过但一个也没有」)而不是 null:这样「没列出模型」这件事和 [Provider.savedUntested]
      * 一起把两种情形分清楚了——真的没有列表,还是这次没去列。旧的 [testAndSave] 一行都不动。
@@ -545,22 +548,15 @@ class ModelSetupViewModel(
             val baseUrl = f.baseUrl.trim()
             val typed = f.typedModel
             val saved = withContext(io) {
-                val p = store.connect(
+                store.connect(
                     f.providerName, f.kind, baseUrl, key.ifEmpty { null }, emptyList(), f.sessionHeader, untested = true,
-                )
-                if (typed.isEmpty()) return@withContext p
-                store.markTyped(p.id, typed)
-                // markTyped 换了一个新的 Provider 实例,重读之后再挂配置
-                store.provider(p.id)?.let { fresh ->
-                    if (store.roles.value.main == null) use(ModelRole.Main, fresh, typed, ModelOptions.ofProvider(fresh, store.list()))
-                    fresh
-                } ?: p
+                ).also { p -> if (typed.isNotEmpty()) store.markTyped(p.id, typed) }
             }
             _state.update {
                 snapshot(it.copy(
                     form = AddForm.of(ProviderPresets.all.first()), formOpen = false,
                     probeNote = tr(R.string.model_saved_untested, f.providerName),
-                    // 没有主模型(没手填,或手填了但已经有主模型不算)时,选它会先试调用
+                    // 没有主模型时,在它里面选主模型会先试调用
                     pickToProbe = saved.id.takeIf { store.roles.value.main == null },
                 ))
             }

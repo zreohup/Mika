@@ -374,6 +374,22 @@ class ProviderStoreTest {
         assertEquals(setOf("m1"), s.provider(verified.id)!!.verifiedModels)
     }
 
+    /** 主模型在它那家还没测试通过(没有列表、手填、没核实)时给出那一家;核实过、或这家有列表时不算。 */
+    @Test
+    fun untestedMainProviderFollowsTheMainModel() {
+        val s = store()
+        assertNull("没有主模型", s.untestedMainProvider())
+        val p = s.connect("X", ProviderConfig.Kind.OpenAiCompat, "https://x.test/v1", "k", emptyList(), untested = true)
+        s.markTyped(p.id, "m1")
+        s.use(ModelRole.Main, p.id, "m1", none)
+        assertEquals(p.id, s.untestedMainProvider()?.id)
+        s.markVerified(p.id, "m1")
+        assertNull("试通过了", s.untestedMainProvider())
+        val listed = s.connect("Y", ProviderConfig.Kind.OpenAiCompat, "https://y.test/v1", "k", listOf(ListedModel("m2")))
+        s.use(ModelRole.Main, listed.id, "m2", none)
+        assertNull("从列表里选的不算", s.untestedMainProvider())
+    }
+
     /** 跳过测试再存一次已经列过模型的那家:已有的列表留着,不要被空表盖掉,也仍然是「测过」。 */
     @Test
     fun savingUntestedAgainKeepsAnExistingModelList() {

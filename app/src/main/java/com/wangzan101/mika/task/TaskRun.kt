@@ -51,6 +51,7 @@ import com.wangzan101.mika.core.skills.SkillDrafter
 import com.wangzan101.mika.chat.ConversationStore
 import com.wangzan101.mika.memory.MemoryRuntime
 import com.wangzan101.mika.settings.MemorySwitches
+import com.wangzan101.mika.settings.ProviderStore
 import com.wangzan101.mika.core.record.RunEvent
 import com.wangzan101.mika.core.replay.RouteMatcher
 import com.wangzan101.mika.core.replay.RouteRecorder
@@ -425,6 +426,12 @@ class TaskRun(
 
     /** 此刻要显示的状态;已收尾时为空,不再重画通知。 */
     fun shownState(): TaskState? = synchronized(publishLock) { if (ended) null else _state.value }
+
+    /** 因模型失败、主模型在它那家还没测试通过时,提示去那家「重新测试」(见 [RetestHint])。测试换了主模型时不看设置里的配置。 */
+    private fun withRetestHint(end: TaskState): TaskState {
+        if (end !is TaskState.Failed || env.modelFactory !== TaskEnvironment.defaultModelFactory) return end
+        return RetestHint.apply(end, ProviderStore.get(service).untestedMainProvider()) { tr(R.string.fail_model_untested, it) }
+    }
 
     suspend fun execute(priorTurns: List<Turn>): TaskState {
         // 手机一侧(内置助手、无障碍、虚拟屏)第一次 launch_app 时才接上:只用网页、沙箱的任务不需要它们
@@ -839,7 +846,7 @@ class TaskRun(
                     service.refreshNotifications(this@TaskRun)
                 }
             }
-            return withContext(tally) { agent.run(runSpec, inbox) }.also { usedGroups = agent.usedGroups.toList() }
+            return withContext(tally) { agent.run(runSpec, inbox) }.also { usedGroups = agent.usedGroups.toList() }.let(::withRetestHint)
         } finally {
             handoffUnconsumed()
             side.cancel()

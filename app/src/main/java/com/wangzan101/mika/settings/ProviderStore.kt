@@ -145,6 +145,13 @@ data class Provider(
     val contextSettings: Map<String, ModelContextSettings> = emptyMap(),
 ) {
     val key: String get() = ProviderConnection.keyOf(kind, baseUrl, name)
+
+    /**
+     * [model] 在这家还没测试通过:这家没有可用的列表(不提供,或跳过测试存下时没列过),模型名是手填的,又没在
+     * [verifiedModels] 里。账号登录的那几家模型名是固定的,不算。服务商页对这样在用的模型给「重新测试」。
+     */
+    fun untested(model: String): Boolean =
+        kind != ProviderConfig.Kind.ChatGpt && kind != ProviderConfig.Kind.Xai && models?.isEmpty() == true && model !in verifiedModels
 }
 
 /** 留空的窗口沿用所选模型配置，留空的触发点交给核心自动计算。 */
@@ -517,6 +524,12 @@ class ProviderStore(
         val cfg = choices.resolve(role)?.let { id -> _configs.value.firstOrNull { it.id == id } } ?: return null
         val viaMain = role == ModelRole.Vision && choices.vision == RoleChoice.SameAsMain
         return if (viaMain) cfg.copy(capabilities = cfg.capabilities.copy(vision = true)) else cfg
+    }
+
+    /** 主模型在它那家还没测试通过时给出那一家(见 [Provider.untested]);任务因模型失败时据此提示去「重新测试」。 */
+    fun untestedMainProvider(): Provider? {
+        val cfg = configFor(ModelRole.Main) ?: return null
+        return provider(cfg.providerId)?.takeIf { it.untested(cfg.model) }
     }
 
     /**

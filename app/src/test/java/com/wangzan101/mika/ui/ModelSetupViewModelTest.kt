@@ -945,8 +945,8 @@ class ModelSetupViewModelTest {
         assertTrue("存好后说清它没测过", s.probeNote?.contains(p.name) == true)
     }
 
-    /** 手填了模型名:记为手填、当主模型,但仍然是一次试调用都没打。 */
-    @Test fun saveWithoutTestWithTypedModelUsesItAsMainWithoutProbing() = runTest {
+    /** 手填了模型名:只记为手填,不自动当主模型;选它当主模型时先试调用,通了才用。 */
+    @Test fun saveWithoutTestWithTypedModelDoesNotBecomeMainUntilProbed() = runTest {
         val store = store()
         val vm = vm(store)
         vm.setApiKey("sk"); vm.setManual(true); vm.setModel("deepseek-v9")
@@ -957,9 +957,34 @@ class ModelSetupViewModelTest {
         assertEquals(setOf("deepseek-v9"), p.typedModels)
         assertEquals(emptySet<String>(), p.verifiedModels)
         assertTrue(p.savedUntested)
+        assertNull("没测过的模型不自动当主模型", store.roles.value.main)
+        assertTrue(store.list().isEmpty())
+        assertEquals(p.id, vm.state.value.pickToProbe)
+        // 重开设置(界面状态没了)也一样:跳过测试存下的那家选主模型先试调用
+        val again = vm(store)
+        runCurrent()
+        assertNull(again.state.value.pickToProbe)
+        assertTrue(again.state.value.probeBeforePick(ModelRole.Main, p.id))
+        assertFalse(again.state.value.probeBeforePick(ModelRole.Light, p.id))
+        again.pickManual(ModelRole.Main, p.id, "deepseek-v9"); runCurrent()
+        assertEquals(listOf("deepseek-v9"), built.map { it.first })
         assertEquals("deepseek-v9", store.configFor(ModelRole.Main)?.model)
-        assertEquals(listOf("deepseek-v9"), store.list().map { it.model })
-        // 已经有主模型了,不用再去选
+        assertFalse("试通过了就不算没测过", store.provider(p.id)!!.savedUntested)
+        assertFalse(again.state.value.probeBeforePick(ModelRole.Main, p.id))
+    }
+
+    /** 已经有主模型时跳过测试存下另一家:主模型不变。 */
+    @Test fun saveWithoutTestKeepsTheCurrentMainModel() = runTest {
+        listing[deepseekUrl] = deepseek
+        val store = store()
+        val vm = vm(store)
+        vm.setApiKey("sk-1"); vm.testAndSave(); runCurrent()
+        val main = store.configFor(ModelRole.Main)
+        assertEquals("deepseek-chat", main?.model)
+        vm.openForm(); vm.selectPreset(ProviderPresets.custom.label)
+        vm.setBaseUrl("http://127.0.0.1:11434/v1"); vm.setManual(true); vm.setModel("local-model")
+        vm.saveWithoutTest(); runCurrent()
+        assertEquals(main, store.configFor(ModelRole.Main))
         assertNull(vm.state.value.pickToProbe)
     }
 
