@@ -343,7 +343,7 @@ fun LanguageScreen(language: AppLanguage, onLanguage: (AppLanguage) -> Unit, onB
     }
 }
 
-/** 语言的名字:简体中文、繁體中文、English 总用它自己的写法,「跟随系统」按当前语言写。 */
+/** 语言的名字:每种语言总用它自己的写法(日本語、Español…),「跟随系统」按当前语言写。 */
 @Composable
 fun languageLabel(l: AppLanguage): String = stringResource(
     when (l) {
@@ -351,6 +351,12 @@ fun languageLabel(l: AppLanguage): String = stringResource(
         AppLanguage.SimplifiedChinese -> R.string.language_simplified_chinese
         AppLanguage.TraditionalChinese -> R.string.language_traditional_chinese
         AppLanguage.English -> R.string.language_english
+        AppLanguage.Japanese -> R.string.language_japanese
+        AppLanguage.Korean -> R.string.language_korean
+        AppLanguage.Spanish -> R.string.language_spanish
+        AppLanguage.Portuguese -> R.string.language_portuguese
+        AppLanguage.Russian -> R.string.language_russian
+        AppLanguage.Indonesian -> R.string.language_indonesian
     },
 )
 
