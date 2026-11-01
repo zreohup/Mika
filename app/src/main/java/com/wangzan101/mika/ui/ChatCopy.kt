@@ -100,8 +100,9 @@ object ChatCopy {
         else -> tr(R.string.step_failed)
     }
 
-    /** 点开一步后,那一行小标题。 */
-    val WHAT_IT_DID get() = tr(R.string.chat_step_details)
+    /** 点开一步后每件事一行:做了什么 · 对什么 · 结果(结果为空时不写)。 */
+    fun actionLine(a: StepAction): String =
+        listOfNotNull(a.label, a.target?.takeIf(String::isNotBlank), effectLabel(a.effect).takeIf(String::isNotBlank)).joinToString(" · ")
 
     fun placeholder(mode: ComposerMode, hasHistory: Boolean): String = when (mode) {
         ComposerMode.Busy -> tr(R.string.chat_placeholder_busy)

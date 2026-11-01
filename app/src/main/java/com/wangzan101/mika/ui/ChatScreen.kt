@@ -720,8 +720,8 @@ private fun StepLine(steps: List<StepRow>, actions: Map<Int, List<StepAction>>, 
             StepItem(
                 row.text, row.subtitle, dot, current = dot == Dot.Current || dot == Dot.Paused,
                 actions = detail, open = open,
-                // 有具体动作才点得开:点开看这一步到底用了什么、对什么、结果如何
-                onToggle = if (detail.isEmpty()) null else ({ expanded[key] = !open }),
+                // 有具体动作才点得开:点开看这一步实际做了什么、对什么、结果如何
+                onClick = if (detail.isEmpty()) null else ({ expanded[key] = !open }),
             )
         }
     }
@@ -730,13 +730,16 @@ private fun StepLine(steps: List<StepRow>, actions: Map<Int, List<StepAction>>, 
 @Composable
 private fun StepItem(
     text: String, subtitle: String, dot: Dot, current: Boolean, link: Boolean = false, onClick: (() -> Unit)? = null,
-    actions: List<StepAction> = emptyList(), open: Boolean = false, onToggle: (() -> Unit)? = null,
+    actions: List<StepAction> = emptyList(), open: Boolean = false,
 ) {
     val c = MikaTheme.colors
     Row(
         Modifier.fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClickLabel = stringResource(R.string.chat_expand_steps), onClick = onClick) else Modifier)
-            .then(if (onToggle != null) Modifier.clickable(onClickLabel = stringResource(R.string.chat_expand_steps), onClick = onToggle) else Modifier)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(onClickLabel = stringResource(if (open) R.string.collapse else R.string.chat_expand_steps), onClick = onClick)
+                } else Modifier,
+            )
             .heightIn(min = 28.dp).padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -753,26 +756,20 @@ private fun StepItem(
                 maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             if (subtitle.isNotEmpty()) Text(subtitle, style = MikaType.Hint, color = c.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            // 能点开的只有有动作的那些:右边的箭头把这件事说出来
-            if (actions.isNotEmpty()) Icon(
-                MikaIcons.Chevron, null,
-                Modifier.padding(top = 2.dp).size(12.dp).graphicsLayer { rotationZ = if (open) 90f else 0f },
-                tint = c.ink3,
-            )
-            // 点开:这一步到底做了什么——哪个工具、对什么、结果如何
-            if (open && actions.isNotEmpty()) {
-                Text(ChatCopy.WHAT_IT_DID, Modifier.padding(top = 3.dp), style = MikaType.Hint, color = c.ink3)
-                actions.forEach { a ->
-                    val effect = ChatCopy.effectLabel(a.effect)
-                    val tool = if (a.tool.isNotBlank() && a.tool != a.label) "${a.label} (${a.tool})" else a.label
-                    Text(
-                        listOfNotNull(tool, a.target?.takeIf(String::isNotBlank), effect.takeIf(String::isNotBlank))
-                            .joinToString(" · "),
-                        Modifier.padding(top = 2.dp), style = MikaType.Hint, color = if (a.failed) c.bad else c.ink2,
-                    )
-                }
+            // 点开:这一步实际做的几件事,一件一行「做了什么 · 对什么 · 结果」,说法和运行过程页一样
+            if (open) actions.forEach { a ->
+                Text(
+                    ChatCopy.actionLine(a), Modifier.padding(top = 2.dp),
+                    style = MikaType.Hint, color = if (a.failed) c.bad else c.ink3, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                )
             }
         }
+        // 能点开的只有有动作的那些:右边一个小箭头,点开时朝下
+        if (actions.isNotEmpty()) Icon(
+            MikaIcons.Chevron, null,
+            Modifier.padding(start = 6.dp).size(12.dp).graphicsLayer { rotationZ = if (open) 90f else 0f },
+            tint = c.ink3,
+        )
     }
 }
 

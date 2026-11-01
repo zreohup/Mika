@@ -142,5 +142,4 @@
     <string name="pip_reopen">顯示畫面</string>
     <string name="pip_closed_needs_you">等你處理</string>
     <string name="pip_closed_hint">這個任務不再浮出小畫面。點右下角「顯示畫面」，或在側欄「背景螢幕」裡看。</string>
-    <string name="chat_step_details">這一步做了什麼</string>
 </resources>

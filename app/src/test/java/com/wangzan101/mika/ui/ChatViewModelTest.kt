@@ -9,6 +9,8 @@ import com.wangzan101.mika.confirm.ConfirmationNotifier
 import com.wangzan101.mika.core.agent.FailKind
 import com.wangzan101.mika.core.agent.QuoteMessage
 import com.wangzan101.mika.core.agent.TaskState
+import com.wangzan101.mika.R
+import com.wangzan101.mika.i18n.tr
 import com.wangzan101.mika.core.gate.ConfirmationRequest
 import com.wangzan101.mika.core.risk.IrrevAction
 import com.wangzan101.mika.core.agent.Turn
@@ -195,14 +197,19 @@ class ChatViewModelTest {
         val ex = vm.ui.value.exchanges.single()
         assertEquals(
             listOf(
-                // label 是给人看的,后面带着记录里原样的工具名
-                StepAction("点击", "phone_tap", "聊天", "changed", false),
-                StepAction("输入文字", "phone_type_text", "com.other", "unknown_code", true),
+                // 用工具的界面说法,不带工具名
+                StepAction("点击", "聊天", "changed", false),
+                StepAction("输入文字", "com.other", "unknown_code", true),
             ),
             ex.stepActions.getValue(1),
         )
         // 只挂在有动作的那一步上
         assertEquals(setOf(1), ex.stepActions.keys)
+        // 点开后每件事一行:做了什么 · 对什么 · 结果;错误码不给人看,说「没成功」
+        val lines = ex.stepActions.getValue(1).map(ChatCopy::actionLine)
+        assertEquals("点击 · 聊天 · ${tr(R.string.result_effective)}", lines[0])
+        assertEquals("输入文字 · com.other · ${tr(R.string.step_failed)}", lines[1])
+        lines.forEach { assertFalse(it, it.contains("phone_") || it.contains("unknown_code")) }
     }
 
     @Test fun unverifiedIsMarkedOnTheResult() = runTest {

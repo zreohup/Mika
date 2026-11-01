@@ -84,15 +84,15 @@ interface TaskActions {
 enum class StepState { Ok, Run, Wait, Dim }
 
 /**
+ * 一步里的一个动作:做了什么([label],工具的界面说法,不是工具名)、对什么、结果如何(运行记录里的 effect)。
+ * 点开这一步时逐条列出来——一行标题写的是汇总,想看它到底点了什么、打了什么字,看这里。
+ */
+data class StepAction(val label: String, val target: String?, val effect: String?, val failed: Boolean)
+
+/**
  * 执行过程里的一行,来自实际做过的事(运行事件里的活动):[title] 是做了什么(读取类合并成「看了微信的聊天列表」),
  * [reason] 是模型给那一步写的用意(没写时为空),[subtitle] 是没成功时的说明,平时为空。
  */
-/**
- * 一步里的一个动作:用了哪个工具、对什么、结果如何。点开这一步时逐条列出来——
- * 一行标题写的是汇总结论,想看它到底点了哪个按钮、打了什么字,看这里。
- */
-data class StepAction(val label: String, val tool: String, val target: String?, val effect: String?, val failed: Boolean)
-
 data class StepRow(val step: Int, val title: String, val subtitle: String, val state: StepState, val reason: String = "") {
     /** 这一步在界面上的说法:模型自己的话,没有时用工具的说法。 */
     val text: String get() = reason.ifEmpty { title }
@@ -1161,8 +1161,8 @@ class ChatViewModel(
         /** 按步号归好的动作明细:点开一步时列出来。 */
         private fun actionsOf(activities: List<RunEvent.Activity>, appLabel: (String) -> String, toolLabel: (String) -> String) =
             activities.groupBy { it.step }.mapValues { (_, list) ->
-                // label 是给人看的说法,tool 是记录里原样的工具名:点开时两个都给,才看得出具体执行的是哪条指令
-                list.map { a -> StepAction(toolLabel(a.label), a.label, a.target?.let { where(it, appLabel) }, a.effect, a.failed) }
+                // 用工具的界面说法(和运行过程页同一份),不把工具名露给用户
+                list.map { a -> StepAction(toolLabel(a.label), a.target?.let { where(it, appLabel) }, a.effect, a.failed) }
             }
 
         private fun state(ex: Exchange, s: TaskState, appLabel: (String) -> String): Exchange = when (s) {
