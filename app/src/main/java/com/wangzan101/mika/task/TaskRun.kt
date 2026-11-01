@@ -18,6 +18,7 @@ import com.wangzan101.mika.cap.sandbox.SandboxState
 import com.wangzan101.mika.cap.sandbox.AndroidSandbox
 import com.wangzan101.mika.cap.sandbox.SandboxDirs
 import com.wangzan101.mika.chat.SharedFile
+import android.content.pm.ApplicationInfo
 import android.graphics.Bitmap
 import android.hardware.display.DisplayManager
 import android.os.Build
@@ -515,6 +516,8 @@ class TaskRun(
                         side.launch { d.frames.collect { if (dispatcher?.surface != WEB) _frames.value = it } }
                     }
                 }
+                val audio = recovery.audioMute(shell, key).also { mute = it }
+                val muter = appMuter(shell, audio)
                 val screen = AndroidScreen(
                     a11y, shell, agentDisplay, { recovery.markClipHeld(it) },
                     clipLock = service.clipLock, checkOtherTasks = parallel,
@@ -527,9 +530,11 @@ class TaskRun(
                     handedOver = { handoverRef?.handedOver == true },
                     // 打字一段一段出来;App 知识说限制浏览快慢的 App 打得更慢
                     typing = { pkg -> pace.typing(PlacePace.of(pkg?.let(skills::appPace))) },
+                    // 启动前就静上,开头几秒也没声;启动被拒就还原
+                    beforeOpen = muter::beforeOpen,
+                    notOpened = muter::notOpened,
                 )
-                val audio = recovery.audioMute(shell, key).also { mute = it }
-                val side0 = PhoneSide(shell, a11y, screen, agentDisplay, audio)
+                val side0 = PhoneSide(shell, a11y, screen, agentDisplay, muter)
                 phone = side0
                 watchTarget(side0, states)
                 return screen
@@ -746,11 +751,13 @@ class TaskRun(
                 override suspend fun moveToMain(taskId: Int) = moveTask(taskId, Display.DEFAULT_DISPLAY)
                 override suspend fun moveBack(taskId: Int) = moveBackToAgent(taskId)
                 override fun setSound(packageName: String, on: Boolean) {
-                    val audio = phone?.audio ?: return
+                    val p = phone ?: return
+                    // 交出去的若是目标 App,按目标所属的那份算;别的按本来那份
+                    val user = p.screen.target.value?.takeIf { it.packageName == packageName }?.let { copyUser(it.userId) }
                     if (on) {
-                        if (!audio.restore(packageName)) Log.w(TAG, "could not restore sound of $packageName for takeover")
-                    } else if (FeatureFlags.get(service).muteTarget() && !audio.mute(packageName)) {
-                        muteFailedFor = packageName
+                        if (!p.audio.release(packageName, user)) Log.w(TAG, "could not restore sound of $packageName for takeover")
+                    } else {
+                        p.audio.opened(packageName, user)
                     }
                 }
                 override fun watchInput(packageName: String) {
@@ -867,8 +874,33 @@ class TaskRun(
     /** 手机一侧:用过手机的任务才有。 */
     private class PhoneSide(
         val shell: com.wangzan101.mika.shell.IMikaShell, val a11y: ScreenAccessibility, val screen: AndroidScreen,
-        val display: LazyAgentDisplay, val audio: AudioMute,
+        val display: LazyAgentDisplay, val audio: AppMuter,
     )
+
+    /**
+     * 这次任务的静音规则(见 [AppMuter]):Mika 自己不静;没有桌面入口的系统包不静(系统界面、选择框一类);
+     * 用户在主屏上看得见的不静;没静成的记下,任务进度上提示可能出声。
+     */
+    private fun appMuter(shell: com.wangzan101.mika.shell.IMikaShell, audio: AudioMute): AppMuter {
+        val pm = service.packageManager
+        val own = service.packageName
+        fun system(pkg: String) = runCatching {
+            pm.getApplicationInfo(pkg, 0).flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+        }.getOrElse { runCatching { shell.isSystemPackage(pkg) }.getOrDefault(false) }
+        return AppMuter(
+            audio,
+            enabled = { FeatureFlags.get(service).muteTarget() },
+            mutable = { pkg -> pkg != own && (runCatching { pm.getLaunchIntentForPackage(pkg) }.getOrNull() != null || !system(pkg)) },
+            onMainScreen = { pkg, user -> runCatching { shell.visibleOnMainScreen(pkg, user ?: AppCopyReader.myUser) }.getOrDefault(true) },
+            failed = { pkg ->
+                muteFailedFor = pkg
+                publish(_state.value)
+            },
+        )
+    }
+
+    /** 任务所属的用户 → 静音按哪一份:本来那份(或读不到)为 null,另一份用户里的为那个用户编号。 */
+    private fun copyUser(userId: Int): Int? = userId.takeIf { it >= 0 && it != AppCopyReader.myUser }
 
     @Volatile private var handoverRef: Takeover? = null
     @Volatile private var sideScope: CoroutineScope? = null
@@ -885,18 +917,23 @@ class TaskRun(
         screen.afterUserStep(r)
     }
 
-    /** 目标 App 换了就静音,并盯着它有没有被用户挪到主屏。 */
+    /**
+     * 目标 App 换了就静音(启动前多半已静上,这里补上没静成的),并盯着它有没有被用户挪到主屏。
+     * Mika 屏上冒出别的 App(从目标 App 里点开的、另一份顶上来的)也是第一次看到就静;静音按「包 + 用户」,另一份单独静。
+     * 用户接管期间屏上的事归用户,不去静。
+     */
     private fun watchTarget(p: PhoneSide, states: DeviceStateWatcher) {
         val side = sideScope ?: return
         side.launch(Dispatchers.IO) {
+            p.screen.foregroundApps().collect { t ->
+                if (handoverRef?.handedOver != true) p.audio.opened(t.packageName, copyUser(t.userId))
+                // 窗口变得很密:两次之间至少隔一会儿,中间的变化合成一次
+                delay(FOREGROUND_GAP_MS)
+            }
+        }
+        side.launch(Dispatchers.IO) {
             p.screen.target.filterNotNull().collectLatest { t ->
-                // 用户在「干活时」关掉了静音就不碰它的声音。静音按包作用在 Mika 所在的用户上:目标是另一份用户里的那份时不碰,
-                // 免得把用户手上本来那份静了音
-                val otherCopy = t.userId >= 0 && t.userId != AppCopyReader.myUser
-                if (FeatureFlags.get(service).muteTarget() && !otherCopy && !p.audio.mute(t.packageName)) {
-                    muteFailedFor = t.packageName
-                    publish(_state.value)
-                }
+                if (handoverRef?.handedOver != true) p.audio.opened(t.packageName, copyUser(t.userId))
                 // 有目标 App 就说明 launch_app 已经建好了屏
                 val displayId = p.display.current?.displayId
                 if (t.taskId >= 0 && displayId != null) {
@@ -1080,6 +1117,8 @@ class TaskRun(
         const val WEB_FRAME_MS = 500L
         const val SHELL_WAIT_MS = 15_000L
         const val DISPLAY_RETRY_MS = 1_000L
+        /** Mika 屏上的前台 App 两次重读之间至少隔这么久。 */
+        const val FOREGROUND_GAP_MS = 300L
         val WAITING_DISPLAY: String get() = tr(R.string.task_waiting_display)
         const val A11Y_WAIT_MS = 5_000L
         val NO_PHONE_HELPER: String get() = tr(R.string.task_no_phone_helper)

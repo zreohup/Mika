@@ -61,8 +61,6 @@ class ShellService(
     private val muted = AudioMuteLedger(File(stateDir, "mika_audio_mute_$allowedUid"))
     /** Mika 所在的用户:本来那份 App 装在这里;别的用户里的是另一份(分身、工作资料)。 */
     private val myUser = allowedUid / PER_USER_RANGE
-    /** appops 作用的用户:Mika 所在的用户。 */
-    private val userArg = myUser.toString()
 
     // 不能用 getSystemService:那样拿到的 DisplayManager 绑的是系统上下文,包名与 shell uid 对不上
     @SuppressLint("PrivateApi")
@@ -745,44 +743,91 @@ class ShellService(
     /**
      * `appops set <pkg> PLAY_AUDIO ignore`;首次静音时记下原模式(同时落文件),取消静音时恢复。
      * 原来没设置过的恢复成 allow,不写 default(见 [AudioMuteLedger.restoreMode])。
-     * 命令失败返回 false,且不记录原模式(读不到原值就不改)。
+     * 命令失败返回 false,且不记录原模式(读不到原值就不改)。作用在 Mika 所在的用户上(本来那份)。
      */
-    override fun setAudioMuted(packageName: String, muted: Boolean): Boolean = synchronized(this.muted) {
+    override fun setAudioMuted(packageName: String, muted: Boolean): Boolean = audioMuted(packageName, null, muted)
+
+    /** 同 [setAudioMuted],作用在 [userId] 那份用户里的那份(分身、工作资料);记录按 [AppAudioKey] 分开记。 */
+    override fun setAudioMutedInUser(packageName: String, userId: Int, muted: Boolean): Boolean {
+        if (userId == myUser) return audioMuted(packageName, null, muted)
+        return audioMuted(packageName, otherUser(userId) ?: return false, muted)
+    }
+
+    private fun audioMuted(packageName: String, user: Int?, muted: Boolean): Boolean = synchronized(this.muted) {
+        val key = AppAudioKey.of(packageName, user)
         if (muted) {
-            if (!this.muted.contains(packageName)) {
-                val (code, out) = appops("get", packageName)
+            if (!this.muted.contains(key)) {
+                val (code, out) = appops("get", packageName, user)
                 if (code != 0) return false
-                this.muted.put(packageName, parsePlayAudioMode(out))
+                this.muted.put(key, parsePlayAudioMode(out))
             }
-            appops("set", packageName, "ignore").first == 0
+            appops("set", packageName, user, "ignore").first == 0
         } else {
-            val ok = appops("set", packageName, AudioMuteLedger.restoreMode(this.muted[packageName])).first == 0
-            if (ok) this.muted.remove(packageName)
+            val ok = appops("set", packageName, user, AudioMuteLedger.restoreMode(this.muted[key])).first == 0
+            if (ok) this.muted.remove(key)
             ok
         }
     }
 
     /** 启动时把上次没来得及恢复的包还原(只动记录里的)。 */
     fun recoverMuted() {
-        synchronized(muted) { muted.restoreAll { pkg, mode -> appops("set", pkg, mode).first == 0 } }
+        synchronized(muted) { muted.restoreAll(::writeRecorded) }
     }
 
-    private fun appops(verb: String, packageName: String, mode: String? = null): Pair<Int, String> =
-        if (mode == null) sh("appops", verb, "--user", userArg, packageName, "PLAY_AUDIO")
-        else sh("appops", verb, "--user", userArg, packageName, "PLAY_AUDIO", mode)
+    /** 按记录的键写回一项;键不合格式的当作已处理,免得一直留着。 */
+    private fun writeRecorded(key: String, mode: String): Boolean {
+        val (pkg, user) = AppAudioKey.parse(key) ?: return true
+        return appops("set", pkg, user, mode).first == 0
+    }
 
-    override fun getAudioMode(packageName: String): String? {
-        val (code, out) = appops("get", packageName)
+    /** [user] 为空是 Mika 所在的用户。 */
+    private fun appops(verb: String, packageName: String, user: Int?, mode: String? = null): Pair<Int, String> {
+        val u = (user ?: myUser).toString()
+        return if (mode == null) sh("appops", verb, "--user", u, packageName, "PLAY_AUDIO")
+        else sh("appops", verb, "--user", u, packageName, "PLAY_AUDIO", mode)
+    }
+
+    /** 别的用户编号原样给出;就是 Mika 所在的用户时为 null(按本来那份处理);不合法时也为 null,调用方据此拒绝。 */
+    private fun otherUser(userId: Int): Int? = userId.takeIf { it >= 0 && it != myUser }
+
+    override fun getAudioMode(packageName: String): String? = audioMode(packageName, null)
+
+    override fun getAudioModeInUser(packageName: String, userId: Int): String? {
+        if (userId == myUser) return audioMode(packageName, null)
+        return audioMode(packageName, otherUser(userId) ?: return null)
+    }
+
+    private fun audioMode(packageName: String, user: Int?): String? {
+        val (code, out) = appops("get", packageName, user)
         return if (code == 0) parsePlayAudioMode(out) else null
     }
 
     /** "default"(没设置过)按 allow 写,理由同 [AudioMuteLedger.restoreMode]。 */
-    override fun setAudioMode(packageName: String, mode: String): Boolean {
+    override fun setAudioMode(packageName: String, mode: String): Boolean = audioMode(packageName, null, mode)
+
+    override fun setAudioModeInUser(packageName: String, userId: Int, mode: String): Boolean {
+        if (userId == myUser) return audioMode(packageName, null, mode)
+        return audioMode(packageName, otherUser(userId) ?: return false, mode)
+    }
+
+    private fun audioMode(packageName: String, user: Int?, mode: String): Boolean {
         if (!MODE_RE.matches(mode)) return false
-        val ok = appops("set", packageName, AudioMuteLedger.restoreMode(mode)).first == 0
-        if (ok) synchronized(muted) { muted.remove(packageName) }
+        val ok = appops("set", packageName, user, AudioMuteLedger.restoreMode(mode)).first == 0
+        if (ok) synchronized(muted) { muted.remove(AppAudioKey.of(packageName, user)) }
         return ok
     }
+
+    /**
+     * 该包([userId] 那份用户里的)在主屏上有看得见的任务:用户正在主屏用它。静音按包作用,这时静了它用户手上的也没声了,
+     * Mika 据此不去静它。看不清主屏时按「在用」答,宁可不静也不把用户正在用的静了。
+     */
+    override fun visibleOnMainScreen(packageName: String, userId: Int): Boolean =
+        try {
+            inUseOnMainScreen(packageName, userId)
+        } catch (t: Throwable) {
+            Log.e(TAG, "cannot inspect main-screen tasks", t)
+            true
+        }
 
     /**
      * 只有读得到用户原来的剪贴板才动它:读不到就分不清「原来是空的」和「有内容但看不到」,
@@ -986,7 +1031,9 @@ class ShellService(
 
     override fun releaseAll() {
         restoreClip()
-        synchronized(muted) { muted.packages() }.forEach { setAudioMuted(it, false) }
+        synchronized(muted) { muted.packages() }.forEach { key ->
+            AppAudioKey.parse(key)?.let { (pkg, user) -> audioMuted(pkg, user, false) } ?: synchronized(muted) { muted.remove(key) }
+        }
         synchronized(displays) { displays.values.toList().also { displays.clear() } }.forEach { it.release() }
     }
 
